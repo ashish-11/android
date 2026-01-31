@@ -1,0 +1,19 @@
+package com.paliapp.ecommerce.data.model
+
+import com.google.firebase.firestore.PropertyName
+
+data class Order(
+    @get:PropertyName("id") @set:PropertyName("id") var id: String = "",
+    @get:PropertyName("userId") @set:PropertyName("userId") var userId: String = "",
+    @get:PropertyName("userName") @set:PropertyName("userName") var userName: String = "",
+    @get:PropertyName("userMobile") @set:PropertyName("userMobile") var userMobile: String = "",
+    @get:PropertyName("items") @set:PropertyName("items") var items: List<CartItem> = emptyList(),
+    @get:PropertyName("totalAmount") @set:PropertyName("totalAmount") var totalAmount: Double = 0.0,
+    @get:PropertyName("status") @set:PropertyName("status") var status: String = "PLACED", // PLACED, DELIVERED, CANCELLED
+    @get:PropertyName("paymentStatus") @set:PropertyName("paymentStatus") var paymentStatus: String = "PENDING", // PENDING, PAID, AWAITING_APPROVAL
+    @get:PropertyName("paymentMethod") @set:PropertyName("paymentMethod") var paymentMethod: String = "", // COD, UPI
+    @get:PropertyName("address") @set:PropertyName("address") var address: String = "",
+    @get:PropertyName("deliveryNote") @set:PropertyName("deliveryNote") var deliveryNote: String = "",
+    @get:PropertyName("deliveryDate") @set:PropertyName("deliveryDate") var deliveryDate: String = "",
+    @get:PropertyName("timestamp") @set:PropertyName("timestamp") var timestamp: Long = System.currentTimeMillis()
+)
