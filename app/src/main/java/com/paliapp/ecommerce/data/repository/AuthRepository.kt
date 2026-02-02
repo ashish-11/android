@@ -3,6 +3,7 @@ package com.paliapp.ecommerce.data.repository
 import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import com.paliapp.ecommerce.data.model.User
 
 class AuthRepository {
@@ -18,7 +19,7 @@ class AuthRepository {
         auth.signInWithEmailAndPassword(email.trim(), password)
             .addOnSuccessListener { result ->
                 val uid = result.user?.uid
-                if (!uid.isNullOrEmpty()) {
+                if (!uid.isNullOrBlank()) {
                     getUserDetails(uid) { userResult ->
                         onResult(userResult)
                     }
@@ -41,7 +42,7 @@ class AuthRepository {
         auth.createUserWithEmailAndPassword(email.trim(), password)
             .addOnSuccessListener { result ->
                 val uid = result.user?.uid
-                if (uid.isNullOrEmpty()) {
+                if (uid.isNullOrBlank()) {
                     onResult(Result.failure(Exception("Registration failed: User ID is null")))
                     return@addOnSuccessListener
                 }
@@ -91,12 +92,13 @@ class AuthRepository {
         uid: String,
         onResult: (Result<User>) -> Unit
     ) {
-        if (uid.isEmpty()) {
+        val cleanUid = uid.trim()
+        if (cleanUid.isBlank()) {
             onResult(Result.failure(Exception("Invalid UID")))
             return
         }
         db.collection("users")
-            .document(uid)
+            .document(cleanUid)
             .get()
             .addOnSuccessListener { doc ->
                 if (doc.exists()) {
@@ -115,11 +117,64 @@ class AuthRepository {
             }
     }
 
+    fun observeUserDetails(
+        uid: String,
+        onResult: (Result<User>) -> Unit
+    ): ListenerRegistration? {
+        val cleanUid = uid.trim()
+        if (cleanUid.isBlank()) {
+            onResult(Result.failure(IllegalArgumentException("UID cannot be empty")))
+            return null
+        }
+        return db.collection("users")
+            .document(cleanUid)
+            .addSnapshotListener { doc, error ->
+                if (error != null) {
+                    onResult(Result.failure(error))
+                    return@addSnapshotListener
+                }
+                if (doc != null && doc.exists()) {
+                    val user = doc.toObject(User::class.java)
+                    if (user != null) {
+                        onResult(Result.success(user))
+                    } else {
+                        onResult(Result.failure(Exception("Error parsing user data")))
+                    }
+                } else {
+                    onResult(Result.failure(Exception("User profile not found")))
+                }
+            }
+    }
+
+    fun updateUserDetails(
+        uid: String,
+        name: String,
+        mobile: String,
+        address: String,
+        onResult: (Boolean) -> Unit
+    ) {
+        val cleanUid = uid.trim()
+        if (cleanUid.isBlank()) {
+            onResult(false)
+            return
+        }
+        val updates = mapOf(
+            "name" to name,
+            "mobile" to mobile,
+            "address" to address
+        )
+        db.collection("users")
+            .document(cleanUid)
+            .update(updates)
+            .addOnSuccessListener { onResult(true) }
+            .addOnFailureListener { onResult(false) }
+    }
+
     fun getUserRole(
         uid: String,
         onResult: (Result<String>) -> Unit
     ) {
-        if (uid.isEmpty()) {
+        if (uid.isBlank()) {
             onResult(Result.failure(Exception("Invalid UID")))
             return
         }
@@ -159,21 +214,23 @@ class AuthRepository {
     }
 
     fun approveUser(uid: String, onResult: (Boolean) -> Unit) {
-        if (uid.isEmpty()) {
+        val cleanUid = uid.trim()
+        if (cleanUid.isBlank()) {
             onResult(false)
             return
         }
-        db.collection("users").document(uid).update("isApproved", true)
+        db.collection("users").document(cleanUid).update("isApproved", true)
             .addOnSuccessListener { onResult(true) }
             .addOnFailureListener { onResult(false) }
     }
 
     fun rejectUser(uid: String, onResult: (Boolean) -> Unit) {
-        if (uid.isEmpty()) {
+        val cleanUid = uid.trim()
+        if (cleanUid.isBlank()) {
             onResult(false)
             return
         }
-        db.collection("users").document(uid).delete()
+        db.collection("users").document(cleanUid).delete()
             .addOnSuccessListener { onResult(true) }
             .addOnFailureListener { onResult(false) }
     }

@@ -1,16 +1,24 @@
 package com.paliapp.ecommerce.viewmodel
 
+import android.net.Uri
 import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
+import androidx.lifecycle.viewModelScope
+import com.google.firebase.storage.FirebaseStorage
 import com.paliapp.ecommerce.data.model.Order
+import com.paliapp.ecommerce.data.repository.OrderRepository
+import com.paliapp.ecommerce.data.repository.SettingsRepository
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 class OrderViewModel : ViewModel() {
 
-    private val db = FirebaseFirestore.getInstance()
+    private val orderRepo = OrderRepository()
+    private val settingsRepo = SettingsRepository()
+    private val storage = FirebaseStorage.getInstance()
 
     private val _orders = mutableStateOf<List<Order>>(emptyList())
     val orders: State<List<Order>> = _orders
@@ -19,99 +27,107 @@ class OrderViewModel : ViewModel() {
     val customerOrders: State<List<Order>> = _customerOrders
 
     val upiQrUrl = mutableStateOf<String?>(null)
+    
+    private var ordersJob: Job? = null
+    private var customerOrdersJob: Job? = null
 
     init {
         loadAllOrders()
-        loadUpiQr()
+        observeUpiQr()
     }
 
     fun loadAllOrders() {
-        db.collection("orders")
-            .orderBy("timestamp", Query.Direction.DESCENDING)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    Log.e("OrderViewModel", "Error loading orders", error)
-                    return@addSnapshotListener
+        ordersJob?.cancel()
+        ordersJob = viewModelScope.launch {
+            try {
+                orderRepo.getAllOrders().collectLatest {
+                    _orders.value = it
                 }
-                if (snapshot != null) {
-                    _orders.value = snapshot.documents.mapNotNull { doc ->
-                        doc.toObject(Order::class.java)?.apply { id = doc.id }
-                    }
-                }
+            } catch (e: Exception) {
+                Log.w("OrderViewModel", "Failed to collect all orders, likely due to logout.", e)
+                _orders.value = emptyList()
             }
+        }
+    }
+
+    private fun observeUpiQr() {
+        viewModelScope.launch {
+             try {
+                settingsRepo.getUpiQrUrlFlow().collectLatest {
+                    upiQrUrl.value = it
+                }
+            } catch (e: Exception) {
+                Log.w("OrderViewModel", "Failed to collect UPI QR URL.", e)
+                upiQrUrl.value = null
+            }
+        }
     }
 
     fun loadCustomerOrders(userId: String) {
-        if (userId.isEmpty()) return
-        db.collection("orders")
-            .whereEqualTo("userId", userId)
-            .orderBy("timestamp", Query.Direction.DESCENDING)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    Log.e("OrderViewModel", "Error loading customer orders", error)
-                    return@addSnapshotListener
+        customerOrdersJob?.cancel()
+        customerOrdersJob = viewModelScope.launch {
+            try {
+                orderRepo.getCustomerOrders(userId).collectLatest {
+                    _customerOrders.value = it
                 }
-                if (snapshot != null) {
-                    _customerOrders.value = snapshot.documents.mapNotNull { doc ->
-                        doc.toObject(Order::class.java)?.apply { id = doc.id }
-                    }
-                } else {
-                    _customerOrders.value = emptyList()
-                }
+            } catch (e: Exception) {
+                Log.w("OrderViewModel", "Failed to collect customer orders, likely due to logout.", e)
+                _customerOrders.value = emptyList()
             }
+        }
     }
     
     fun updateOrderStatus(orderId: String, newStatus: String) {
-        if (orderId.isEmpty()) return
-        db.collection("orders").document(orderId).update("status", newStatus)
+        viewModelScope.launch {
+            orderRepo.updateOrderStatus(orderId, newStatus)
+        }
     }
 
     fun updatePaymentStatus(orderId: String, newStatus: String) {
-        if (orderId.isEmpty()) return
-        db.collection("orders").document(orderId).update("paymentStatus", newStatus)
-    }
-
-    fun setPaymentMethod(orderId: String, method: String) {
-        if (orderId.isEmpty()) return
-        
-        val updates = hashMapOf<String, Any>(
-            "paymentMethod" to method,
-            "paymentStatus" to "AWAITING_APPROVAL"
-        )
-        
-        db.collection("orders").document(orderId).update(updates)
-            .addOnSuccessListener {
-                Log.d("OrderViewModel", "Order updated to AWAITING_APPROVAL")
-            }
-            .addOnFailureListener {
-                Log.e("OrderViewModel", "Failed to update order payment method", it)
-            }
+        viewModelScope.launch {
+            orderRepo.updatePaymentStatus(orderId, newStatus)
+        }
     }
 
     fun updateDeliveryDate(orderId: String, date: String) {
-        if (orderId.isEmpty()) return
-        db.collection("orders").document(orderId).update("deliveryDate", date)
+        viewModelScope.launch {
+            orderRepo.updateDeliveryDate(orderId, date)
+        }
+    }
+
+    fun setPaymentMethod(orderId: String, method: String) {
+        viewModelScope.launch {
+            orderRepo.setPaymentMethod(orderId, method)
+        }
     }
 
     fun deleteOrder(orderId: String) {
-        if (orderId.isEmpty()) return
-        db.collection("orders").document(orderId).delete()
-    }
-
-    fun refreshFromServer() {
-        db.clearPersistence().addOnCompleteListener {
-            loadAllOrders()
-            loadUpiQr()
+        viewModelScope.launch {
+            orderRepo.deleteOrder(orderId)
         }
     }
 
-    private fun loadUpiQr() {
-        db.collection("settings").document("payment").addSnapshotListener { doc, _ ->
-            upiQrUrl.value = doc?.getString("upiQrUrl")
+    fun uploadQrCode(uri: Uri, onResult: (Boolean) -> Unit) {
+        val ref = storage.reference.child("settings/upi_qr.png")
+        ref.putFile(uri)
+            .addOnSuccessListener {
+                ref.downloadUrl.addOnSuccessListener { url ->
+                    updateUpiQr(url.toString())
+                    onResult(true)
+                }.addOnFailureListener { onResult(false) }
+            }
+            .addOnFailureListener { onResult(false) }
+    }
+
+    private fun updateUpiQr(url: String) {
+        viewModelScope.launch {
+            settingsRepo.updateUpiQrUrl(url)
         }
     }
 
-    fun updateUpiQr(url: String) {
-        db.collection("settings").document("payment").set(mapOf("upiQrUrl" to url))
+    override fun onCleared() {
+        super.onCleared()
+        ordersJob?.cancel()
+        customerOrdersJob?.cancel()
     }
 }

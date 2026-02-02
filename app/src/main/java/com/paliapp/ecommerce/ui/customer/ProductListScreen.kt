@@ -1,6 +1,7 @@
 package com.paliapp.ecommerce.ui.customer
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -20,10 +21,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.paliapp.ecommerce.data.model.Product
 import com.paliapp.ecommerce.viewmodel.CartViewModel
 import com.paliapp.ecommerce.viewmodel.ProductViewModel
@@ -46,9 +51,17 @@ fun ProductListScreen(
     val scope = rememberCoroutineScope()
     
     var isSearching by remember { mutableStateOf(false) }
+    var selectedImageUrl by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         productVm.loadProducts()
+    }
+
+    if (selectedImageUrl != null) {
+        FullImageDialog(
+            imageUrl = selectedImageUrl!!,
+            onDismiss = { selectedImageUrl = null }
+        )
     }
 
     Scaffold(
@@ -129,12 +142,18 @@ fun ProductListScreen(
                         ProductGridItem(
                             product = product,
                             onAddToCart = { qty ->
-                                cartVm.addToCart(product, qty)
-                                scope.launch {
-                                    snackbarHostState.showSnackbar(
-                                        message = "${product.name} added to cart",
-                                        duration = SnackbarDuration.Short
-                                    )
+                                cartVm.addToCart(product, qty) { success, message ->
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar(
+                                            message = message,
+                                            duration = SnackbarDuration.Short
+                                        )
+                                    }
+                                }
+                            },
+                            onImageClick = {
+                                if (product.imageUrl.isNotEmpty()) {
+                                    selectedImageUrl = product.imageUrl
                                 }
                             }
                         )
@@ -146,10 +165,15 @@ fun ProductListScreen(
 }
 
 @Composable
-fun ProductGridItem(product: Product, onAddToCart: (Int) -> Unit) {
+fun ProductGridItem(
+    product: Product, 
+    onAddToCart: (Int) -> Unit,
+    onImageClick: () -> Unit
+) {
     var quantity by remember { mutableIntStateOf(1) }
     var isAdding by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val isOutOfStock = product.stock <= 0
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -158,20 +182,46 @@ fun ProductGridItem(product: Product, onAddToCart: (Int) -> Unit) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column {
-            // Product Image Placeholder
+            // Product Image using Coil AsyncImage
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(140.dp)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
+                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .clickable { onImageClick() },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    Icons.Default.Inventory, 
-                    contentDescription = null, 
-                    modifier = Modifier.size(48.dp),
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                )
+                if (product.imageUrl.isNotEmpty()) {
+                    AsyncImage(
+                        model = product.imageUrl,
+                        contentDescription = product.name,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        Icons.Default.Inventory, 
+                        contentDescription = null, 
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                    )
+                }
+                
+                if (isOutOfStock) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.6f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "OUT OF STOCK",
+                            color = Color.White,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
 
             Column(modifier = Modifier.padding(12.dp)) {
@@ -194,11 +244,6 @@ fun ProductGridItem(product: Product, onAddToCart: (Int) -> Unit) {
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.ExtraBold
                     )
-                    Text(
-                        text = "/ ${product.unit}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -217,7 +262,8 @@ fun ProductGridItem(product: Product, onAddToCart: (Int) -> Unit) {
                     ) {
                         IconButton(
                             onClick = { if (quantity > 1) quantity-- },
-                            modifier = Modifier.size(32.dp)
+                            modifier = Modifier.size(32.dp),
+                            enabled = !isOutOfStock
                         ) {
                             Text(
                                 text = "—",
@@ -233,8 +279,9 @@ fun ProductGridItem(product: Product, onAddToCart: (Int) -> Unit) {
                             modifier = Modifier.padding(horizontal = 4.dp)
                         )
                         IconButton(
-                            onClick = { quantity++ },
-                            modifier = Modifier.size(32.dp)
+                            onClick = { if (quantity < product.stock) quantity++ },
+                            modifier = Modifier.size(32.dp),
+                            enabled = !isOutOfStock
                         ) {
                             Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                         }
@@ -242,7 +289,7 @@ fun ProductGridItem(product: Product, onAddToCart: (Int) -> Unit) {
 
                     Button(
                         onClick = { 
-                            if (!isAdding) {
+                            if (!isAdding && !isOutOfStock) {
                                 isAdding = true
                                 onAddToCart(quantity)
                                 scope.launch {
@@ -254,9 +301,11 @@ fun ProductGridItem(product: Product, onAddToCart: (Int) -> Unit) {
                         modifier = Modifier.height(40.dp),
                         contentPadding = PaddingValues(horizontal = 8.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isAdding) Color(0xFF4CAF50) else MaterialTheme.colorScheme.secondary
+                            containerColor = if (isAdding) Color(0xFF4CAF50) else MaterialTheme.colorScheme.secondary,
+                            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
                         ),
-                        shape = RoundedCornerShape(8.dp)
+                        shape = RoundedCornerShape(8.dp),
+                        enabled = !isOutOfStock
                     ) {
                         if (isAdding) {
                             Text("Added", style = MaterialTheme.typography.labelMedium)
@@ -265,6 +314,38 @@ fun ProductGridItem(product: Product, onAddToCart: (Int) -> Unit) {
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun FullImageDialog(imageUrl: String, onDismiss: () -> Unit) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .clickable { onDismiss() },
+            contentAlignment = Alignment.Center
+        ) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = "Full Product Image",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Fit
+            )
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+                    .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
+            ) {
+                Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
             }
         }
     }

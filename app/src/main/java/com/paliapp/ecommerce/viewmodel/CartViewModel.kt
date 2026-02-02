@@ -3,16 +3,18 @@ package com.paliapp.ecommerce.viewmodel
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
+import androidx.lifecycle.viewModelScope
 import com.paliapp.ecommerce.data.model.CartItem
-import com.paliapp.ecommerce.data.model.Order
 import com.paliapp.ecommerce.data.model.Product
+import com.paliapp.ecommerce.data.repository.CartRepository
+import com.paliapp.ecommerce.data.repository.UserRepository
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 class CartViewModel : ViewModel() {
 
-    private val db = FirebaseFirestore.getInstance()
-    private val auth = FirebaseAuth.getInstance()
+    private val cartRepo = CartRepository()
+    private val userRepo = UserRepository()
 
     private val _cartItems = mutableStateOf<List<CartItem>>(emptyList())
     val cartItems: State<List<CartItem>> = _cartItems
@@ -22,101 +24,80 @@ class CartViewModel : ViewModel() {
 
     init {
         loadCartItems()
-        loadUserAddress()
+        observeUserAddress()
     }
 
-    private fun loadUserAddress() {
-        val uid = auth.currentUser?.uid ?: return
-        if (uid.isEmpty()) return
-        
-        db.collection("users").document(uid).get().addOnSuccessListener { doc ->
-            _userAddress.value = doc.getString("address") ?: ""
+    private fun observeUserAddress() {
+        viewModelScope.launch {
+            userRepo.getUserAddress().collectLatest { address ->
+                _userAddress.value = address
+            }
         }
     }
 
     fun loadCartItems() {
-        val uid = auth.currentUser?.uid ?: return
-        if (uid.isEmpty()) return
-
-        db.collection("carts").document(uid).collection("items")
-            .addSnapshotListener { snapshot, _ ->
-                if (snapshot != null) {
-                    _cartItems.value = snapshot.documents.mapNotNull { doc ->
-                        doc.toObject(CartItem::class.java)?.copy(id = doc.id)
-                    }
-                }
-            }
+        viewModelScope.launch {
+            _cartItems.value = cartRepo.getCartItems()
+        }
     }
 
-    fun addToCart(product: Product, quantity: Int) {
-        val uid = auth.currentUser?.uid ?: return
-        if (uid.isEmpty() || product.id.isEmpty()) return
-
-        val itemRef = db.collection("carts")
-            .document(uid)
-            .collection("items")
-            .document(product.id)
-
-        itemRef.get().addOnSuccessListener { doc ->
-            if (doc.exists()) {
-                val currentQty = doc.getLong("qty") ?: 0
-                itemRef.update("qty", currentQty + quantity)
-            } else {
-                itemRef.set(
-                    CartItem(
-                        id = product.id,
-                        name = product.name,
-                        price = product.price,
-                        qty = quantity,
-                        imageUrl = product.imageUrl
-                    )
-                )
+    fun addToCart(product: Product, quantity: Int, onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            val result = cartRepo.addToCart(product, quantity)
+            result.onSuccess {
+                loadCartItems()
+                onResult(true, "Added to cart")
+            }.onFailure {
+                onResult(false, it.message ?: "Failed to add to cart")
             }
         }
     }
 
     fun removeFromCart(itemId: String) {
-        val uid = auth.currentUser?.uid ?: return
-        if (uid.isEmpty() || itemId.isEmpty()) return
-        db.collection("carts").document(uid).collection("items").document(itemId).delete()
+        viewModelScope.launch {
+            cartRepo.removeFromCart(itemId).onSuccess {
+                loadCartItems()
+            }
+        }
     }
 
-    fun placeOrder(address: String, onSuccess: () -> Unit) {
-        val uid = auth.currentUser?.uid ?: return
-        if (uid.isEmpty() || _cartItems.value.isEmpty()) return
+    fun placeOrder(address: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        val uid = userRepo.getUid()
+        val currentItems = _cartItems.value
+        
+        if (uid == null || currentItems.isEmpty()) {
+            onError("Cart is empty or user not logged in")
+            return
+        }
 
-        // Update user's default address in profile
-        db.collection("users").document(uid).update("address", address)
+        viewModelScope.launch {
+            val userDetails = userRepo.getUserDetails(uid)
+            if (userDetails == null) {
+                onError("Failed to fetch user profile")
+                return@launch
+            }
 
-        // Fetch user details to include in the order
-        db.collection("users").document(uid).get().addOnSuccessListener { userDoc ->
-            val userName = userDoc.getString("name") ?: ""
-            val userMobile = userDoc.getString("mobile") ?: ""
-
-            val totalAmount = _cartItems.value.sumOf { it.price * it.qty }
-            val orderRef = db.collection("orders").document()
-            val order = Order(
-                id = orderRef.id,
+            val userName = userDetails["name"] as? String ?: ""
+            val userEmail = userDetails["email"] as? String ?: ""
+            val userMobile = userDetails["mobile"] as? String ?: ""
+            
+            // Note: We'll use the OrderRepository for placing order to keep logic clean
+            // Since CartViewModel shouldn't have too much logic, I'll use a new repository call
+            val orderRepo = com.paliapp.ecommerce.data.repository.OrderRepository()
+            val result = orderRepo.placeOrder(
                 userId = uid,
                 userName = userName,
+                userEmail = userEmail,
                 userMobile = userMobile,
-                items = _cartItems.value,
-                totalAmount = totalAmount,
+                items = currentItems,
                 address = address
             )
 
-            orderRef.set(order).addOnSuccessListener {
-                // Clear cart
-                val batch = db.batch()
-                _cartItems.value.forEach { item ->
-                    if (item.id.isNotEmpty()) {
-                        val itemRef = db.collection("carts").document(uid).collection("items").document(item.id)
-                        batch.delete(itemRef)
-                    }
-                }
-                batch.commit().addOnSuccessListener {
-                    onSuccess()
-                }
+            result.onSuccess {
+                loadCartItems()
+                onSuccess()
+            }.onFailure {
+                onError(it.message ?: "Failed to place order")
             }
         }
     }

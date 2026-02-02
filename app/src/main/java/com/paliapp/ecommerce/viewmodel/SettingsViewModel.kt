@@ -1,5 +1,6 @@
 package com.paliapp.ecommerce.viewmodel
 
+import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
@@ -20,7 +21,11 @@ class SettingsViewModel : ViewModel() {
 
     private fun loadSettings() {
         db.collection("settings").document("support")
-            .addSnapshotListener { snapshot, _ ->
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.w("SettingsViewModel", "Error listening to settings: ${error.message}")
+                    return@addSnapshotListener
+                }
                 if (snapshot != null && snapshot.exists()) {
                     _adminContact.value = snapshot.getString("contact") ?: ""
                     _supportMessage.value = snapshot.getString("message") ?: ""

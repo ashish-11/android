@@ -5,14 +5,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import com.google.firebase.firestore.ListenerRegistration
 import com.paliapp.ecommerce.data.model.User
 import com.paliapp.ecommerce.data.repository.AuthRepository
 
 class AuthViewModel : ViewModel() {
 
     private val repo = AuthRepository()
+    private var userListener: ListenerRegistration? = null
 
     var uiState by mutableStateOf<AuthUiState>(AuthUiState.Idle)
+        private set
+
+    var currentUserDetails by mutableStateOf<User?>(null)
         private set
 
     var pendingUsers by mutableStateOf<List<User>>(emptyList())
@@ -21,21 +26,81 @@ class AuthViewModel : ViewModel() {
     var allCustomers by mutableStateOf<List<User>>(emptyList())
         private set
 
+    init {
+        try {
+            val currentUser = repo.auth.currentUser
+            if (currentUser != null) {
+                startObservingUser(currentUser.uid)
+            }
+        } catch (e: Exception) {
+            Log.e("AuthViewModel", "Error in init", e)
+        }
+    }
+
     fun checkSession(onResult: (String?) -> Unit) {
-        val currentUser = repo.auth.currentUser
-        if (currentUser != null) {
-            repo.getUserRole(currentUser.uid) { result ->
-                result.onSuccess { role ->
-                    uiState = AuthUiState.LoggedIn(currentUser.uid, role)
-                    onResult(role)
+        try {
+            val currentUser = repo.auth.currentUser
+            if (currentUser != null) {
+                startObservingUser(currentUser.uid)
+                repo.getUserRole(currentUser.uid) { result ->
+                    result.onSuccess { role ->
+                        uiState = AuthUiState.LoggedIn(currentUser.uid, role)
+                        onResult(role)
+                    }
+                    result.onFailure {
+                        logout()
+                        onResult(null)
+                    }
                 }
-                result.onFailure {
-                    uiState = AuthUiState.Idle
-                    onResult(null)
+            } else {
+                onResult(null)
+            }
+        } catch (e: Exception) {
+            Log.e("AuthViewModel", "Error in checkSession", e)
+            onResult(null)
+        }
+    }
+
+    private fun startObservingUser(uid: String) {
+        if (uid.isBlank()) {
+            Log.e("AuthViewModel", "startObservingUser called with blank UID")
+            return
+        }
+        try {
+            userListener?.remove()
+            userListener = repo.observeUserDetails(uid) { result ->
+                result.onSuccess { user ->
+                    currentUserDetails = user
+                    if (user.role == "CUSTOMER" && !user.isApproved) {
+                        logout()
+                    }
+                }
+                result.onFailure { e ->
+                    // Catch the permission denied or not found error when user is deleted
+                    Log.e("AuthViewModel", "User document error: ${e.message}")
+                    logout()
                 }
             }
-        } else {
-            onResult(null)
+        } catch (e: Exception) {
+            Log.e("AuthViewModel", "Error in startObservingUser", e)
+        }
+    }
+
+    fun loadUserDetails(uid: String) {
+        repo.getUserDetails(uid) { result ->
+            result.onSuccess { user ->
+                currentUserDetails = user
+            }
+            result.onFailure {
+                Log.e("AuthViewModel", "Failed to load user details", it)
+            }
+        }
+    }
+
+    fun updateProfile(name: String, mobile: String, address: String, onResult: (Boolean) -> Unit) {
+        val uid = repo.auth.currentUser?.uid ?: return
+        repo.updateUserDetails(uid, name, mobile, address) { success ->
+            onResult(success)
         }
     }
 
@@ -45,6 +110,7 @@ class AuthViewModel : ViewModel() {
             uiState = result.fold(
                 onSuccess = { user ->
                     if (user.role == "ADMIN" || user.isApproved) {
+                        startObservingUser(user.uid)
                         AuthUiState.LoggedIn(user.uid, user.role)
                     } else {
                         repo.logout()
@@ -62,7 +128,7 @@ class AuthViewModel : ViewModel() {
         repo.register(name, email, mobile, password) { result ->
             uiState = result.fold(
                 onSuccess = {
-                    repo.logout() // Logout after registration to prevent auto-login
+                    repo.logout()
                     AuthUiState.Error("Registration successful! Please wait for Admin approval.")
                 },
                 onFailure = {
@@ -123,8 +189,20 @@ class AuthViewModel : ViewModel() {
     }
 
     fun logout() {
-        repo.logout()
-        uiState = AuthUiState.Idle
+        try {
+            userListener?.remove()
+            userListener = null
+            repo.logout()
+            currentUserDetails = null
+            uiState = AuthUiState.Idle
+        } catch (e: Exception) {
+            Log.e("AuthViewModel", "Error in logout", e)
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        userListener?.remove()
     }
 }
 

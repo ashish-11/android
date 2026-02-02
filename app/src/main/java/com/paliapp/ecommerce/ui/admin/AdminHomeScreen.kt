@@ -22,9 +22,34 @@ import com.paliapp.ecommerce.viewmodel.ProductViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AdminHomeScreen(onLogout: () -> Unit) {
+fun AdminHomeScreen(
+    onLogout: () -> Unit,
+    authVm: AuthViewModel = viewModel()
+) {
     var selectedTab by remember { mutableIntStateOf(-1) } // -1 for Dashboard
     var showDetail by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text("Logout") },
+            text = { Text("Are you sure you want to logout?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLogoutDialog = false
+                    onLogout()
+                }) {
+                    Text("Logout", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     if (showDetail) {
         when (selectedTab) {
@@ -39,7 +64,7 @@ fun AdminHomeScreen(onLogout: () -> Unit) {
                 TopAppBar(
                     title = { Text("WholeSale Admin") },
                     actions = {
-                        IconButton(onClick = onLogout) {
+                        IconButton(onClick = { showLogoutDialog = true }) {
                             Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout")
                         }
                     }
@@ -108,7 +133,8 @@ fun AdminHomeScreen(onLogout: () -> Unit) {
                 onNavigateToOrders = {
                     selectedTab = 1
                     showDetail = true
-                }
+                },
+                authVm = authVm
             )
         }
     }

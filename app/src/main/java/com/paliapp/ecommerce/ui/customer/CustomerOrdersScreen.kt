@@ -5,6 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -12,12 +13,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.google.firebase.auth.FirebaseAuth
 import com.paliapp.ecommerce.data.model.Order
+import com.paliapp.ecommerce.utils.BillGenerator
 import com.paliapp.ecommerce.viewmodel.OrderViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -95,6 +98,7 @@ fun CustomerOrdersScreen(
 
 @Composable
 fun OrderCard(order: Order, onPay: () -> Unit) {
+    val context = LocalContext.current
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -109,7 +113,13 @@ fun OrderCard(order: Order, onPay: () -> Unit) {
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold
                 )
-                StatusBadge(status = order.status)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { BillGenerator.downloadBill(context, order) }, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Download, contentDescription = "Download Bill", modifier = Modifier.size(18.dp))
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    StatusBadge(status = order.status)
+                }
             }
             
             Text(

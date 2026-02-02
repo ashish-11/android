@@ -1,14 +1,17 @@
 package com.paliapp.ecommerce.ui.admin
 
+import android.net.Uri
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.unit.dp
 import com.paliapp.ecommerce.data.model.Product
 import com.paliapp.ecommerce.viewmodel.ProductViewModel
 
@@ -21,6 +24,7 @@ fun AddProductScreen(
     var name by remember { mutableStateOf("") }
     var price by remember { mutableStateOf("") }
     var stock by remember { mutableStateOf("") }
+    var imageUri by remember { mutableStateOf<Uri?>(null) }
 
     Scaffold(
         topBar = {
@@ -28,7 +32,7 @@ fun AddProductScreen(
                 title = { Text("Add New Product") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -38,7 +42,8 @@ fun AddProductScreen(
             modifier = Modifier
                 .padding(paddingValues)
                 .padding(16.dp)
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             OutlinedTextField(
@@ -74,7 +79,8 @@ fun AddProductScreen(
                             name = name,
                             price = price.toDoubleOrNull() ?: 0.0,
                             stock = stock.toIntOrNull() ?: 100
-                        )
+                        ),
+                        imageUri = imageUri
                     ) { success ->
                         if (success) {
                             onBack()

@@ -1,6 +1,7 @@
 package com.paliapp.ecommerce
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -15,7 +16,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.paliapp.ecommerce.ui.SplashScreen
 import com.paliapp.ecommerce.ui.admin.AdminHomeScreen
-
 import com.paliapp.ecommerce.ui.customer.CustomerHomeScreen
 import com.paliapp.ecommerce.ui.auth.LoginScreen
 import com.paliapp.ecommerce.ui.theme.WholeSaleShopTheme
@@ -35,10 +35,15 @@ class MainActivity : ComponentActivity() {
                 var isCheckingSession by remember { mutableStateOf(true) }
 
                 LaunchedEffect(Unit) {
-                    authViewModel.checkSession { role ->
-                        if (role != null) {
-                            startDestination = if (role == "ADMIN") "admin" else "customer"
+                    try {
+                        authViewModel.checkSession { role ->
+                            if (role != null) {
+                                startDestination = if (role == "ADMIN") "admin" else "customer"
+                            }
+                            isCheckingSession = false
                         }
+                    } catch (e: Exception) {
+                        Log.e("MainActivity", "Error checking session", e)
                         isCheckingSession = false
                     }
                 }
@@ -55,7 +60,8 @@ class MainActivity : ComponentActivity() {
 
                             composable("login") {
                                 LoginScreen(
-                                    onSuccess = { uid, role ->
+                                    vm = authViewModel,
+                                    onSuccess = { _, role ->
                                         if (role == "ADMIN") {
                                             navController.navigate("admin") {
                                                 popUpTo("login") { inclusive = true }
@@ -70,27 +76,32 @@ class MainActivity : ComponentActivity() {
                             }
 
                             composable("admin") {
-                                AdminHomeScreen(onLogout = {
-                                    authViewModel.logout()
-                                    navController.navigate("login") {
-                                        popUpTo("admin") { inclusive = true }
+                                AdminHomeScreen(
+                                    authVm = authViewModel,
+                                    onLogout = {
+                                        authViewModel.logout()
+                                        navController.navigate("login") {
+                                            popUpTo("admin") { inclusive = true }
+                                        }
                                     }
-                                })
+                                )
                             }
 
                             composable("customer") {
-                                CustomerHomeScreen(onLogout = {
-                                    authViewModel.logout()
-                                    navController.navigate("login") {
-                                        popUpTo("customer") { inclusive = true }
+                                CustomerHomeScreen(
+                                    authVm = authViewModel,
+                                    onLogout = {
+                                        authViewModel.logout()
+                                        navController.navigate("login") {
+                                            popUpTo("customer") { inclusive = true }
+                                        }
                                     }
-                                })
+                                )
                             }
                         }
                     }
                 }
             }
         }
-
     }
 }

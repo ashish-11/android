@@ -2,55 +2,78 @@ package com.paliapp.ecommerce.data.repository
 
 import com.google.firebase.firestore.FirebaseFirestore
 import com.paliapp.ecommerce.data.model.Product
+import kotlinx.coroutines.tasks.await
 
 class ProductRepository {
 
     private val db = FirebaseFirestore.getInstance()
 
-    fun getActiveProducts(onResult: (List<Product>) -> Unit) {
-        db.collection("products")
-            .whereEqualTo("active", true)
-            .get()
-            .addOnSuccessListener { snapshot ->
-                val products = snapshot.documents.mapNotNull { doc ->
+    suspend fun getActiveProducts(): List<Product> {
+        return try {
+            db.collection("products")
+                .whereEqualTo("active", true)
+                .get()
+                .await()
+                .documents.mapNotNull { doc ->
                     doc.toObject(Product::class.java)?.copy(id = doc.id)
                 }
-                onResult(products)
-            }
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 
-    fun getAllProducts(onResult: (List<Product>) -> Unit) {
-        db.collection("products")
-            .get()
-            .addOnSuccessListener { snapshot ->
-                val products = snapshot.documents.mapNotNull { doc ->
+    suspend fun getAllProducts(): List<Product> {
+        return try {
+            db.collection("products")
+                .get()
+                .await()
+                .documents.mapNotNull { doc ->
                     doc.toObject(Product::class.java)?.copy(id = doc.id)
                 }
-                onResult(products)
-            }
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 
-    fun addProduct(product: Product, onResult: (Boolean) -> Unit) {
-        db.collection("products")
-            .add(product)
-            .addOnSuccessListener { onResult(true) }
-            .addOnFailureListener { onResult(false) }
+    suspend fun addProduct(product: Product): Result<Unit> {
+        return try {
+            db.collection("products").add(product).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
 
-    fun updateProduct(product: Product, onResult: (Boolean) -> Unit) {
-        db.collection("products")
-            .document(product.id)
-            .set(product)
-            .addOnSuccessListener { onResult(true) }
-            .addOnFailureListener { onResult(false) }
+    suspend fun updateProduct(product: Product): Result<Unit> {
+        val productId = product.id.trim()
+        if (productId.isBlank()) {
+            return Result.failure(Exception("Product ID is blank"))
+        }
+        return try {
+            db.collection("products")
+                .document(productId)
+                .set(product)
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
-    fun deleteProduct(productId: String, onResult: (Boolean) -> Unit) {
-        db.collection("products")
-            .document(productId)
-            .delete()
-            .addOnSuccessListener { onResult(true) }
-            .addOnFailureListener { onResult(false) }
+    suspend fun deleteProduct(productId: String): Result<Unit> {
+        val id = productId.trim()
+        if (id.isBlank()) {
+            return Result.failure(Exception("Product ID is blank"))
+        }
+        return try {
+            db.collection("products")
+                .document(id)
+                .delete()
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 }
