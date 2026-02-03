@@ -97,24 +97,28 @@ class AuthRepository {
             onResult(Result.failure(Exception("Invalid UID")))
             return
         }
-        db.collection("users")
-            .document(cleanUid)
-            .get()
-            .addOnSuccessListener { doc ->
-                if (doc.exists()) {
-                    val user = doc.toObject(User::class.java)
-                    if (user != null) {
-                        onResult(Result.success(user))
+        try {
+            db.collection("users")
+                .document(cleanUid)
+                .get()
+                .addOnSuccessListener { doc ->
+                    if (doc.exists()) {
+                        val user = doc.toObject(User::class.java)
+                        if (user != null) {
+                            onResult(Result.success(user))
+                        } else {
+                            onResult(Result.failure(Exception("Error parsing user data")))
+                        }
                     } else {
-                        onResult(Result.failure(Exception("Error parsing user data")))
+                        onResult(Result.failure(Exception("User profile not found")))
                     }
-                } else {
-                    onResult(Result.failure(Exception("User profile not found")))
                 }
-            }
-            .addOnFailureListener {
-                onResult(Result.failure(it))
-            }
+                .addOnFailureListener {
+                    onResult(Result.failure(it))
+                }
+        } catch (e: Exception) {
+            onResult(Result.failure(e))
+        }
     }
 
     fun observeUserDetails(
@@ -126,24 +130,29 @@ class AuthRepository {
             onResult(Result.failure(IllegalArgumentException("UID cannot be empty")))
             return null
         }
-        return db.collection("users")
-            .document(cleanUid)
-            .addSnapshotListener { doc, error ->
-                if (error != null) {
-                    onResult(Result.failure(error))
-                    return@addSnapshotListener
-                }
-                if (doc != null && doc.exists()) {
-                    val user = doc.toObject(User::class.java)
-                    if (user != null) {
-                        onResult(Result.success(user))
-                    } else {
-                        onResult(Result.failure(Exception("Error parsing user data")))
+        return try {
+            db.collection("users")
+                .document(cleanUid)
+                .addSnapshotListener { doc, error ->
+                    if (error != null) {
+                        onResult(Result.failure(error))
+                        return@addSnapshotListener
                     }
-                } else {
-                    onResult(Result.failure(Exception("User profile not found")))
+                    if (doc != null && doc.exists()) {
+                        val user = doc.toObject(User::class.java)
+                        if (user != null) {
+                            onResult(Result.success(user))
+                        } else {
+                            onResult(Result.failure(Exception("Error parsing user data")))
+                        }
+                    } else {
+                        onResult(Result.failure(Exception("User profile not found")))
+                    }
                 }
-            }
+        } catch (e: Exception) {
+            onResult(Result.failure(e))
+            null
+        }
     }
 
     fun updateUserDetails(

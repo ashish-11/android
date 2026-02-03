@@ -1,5 +1,8 @@
 package com.paliapp.ecommerce.ui.admin
 
+import android.widget.Toast
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -50,8 +53,8 @@ fun AdminOrdersScreen(
         }
     ) { padding ->
         OrderList(
-            orders = pendingOrders, 
-            orderVm = orderVm, 
+            orders = pendingOrders,
+            orderVm = orderVm,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
@@ -66,7 +69,44 @@ fun AdminDeliveredOrdersScreen(
     orderVm: OrderViewModel = viewModel()
 ) {
     val deliveredOrders = orderVm.orders.value.filter { it.status == "DELIVERED" }
-    
+    var selectedOrderIds by remember { mutableStateOf(setOf<String>()) }
+    var isSelectionMode by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteConfirmationDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmationDialog = false },
+            title = { Text("Confirm Deletion") },
+            text = { Text("Are you sure you want to delete ${selectedOrderIds.size} selected order(s)? This action cannot be undone.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val ordersToDelete = deliveredOrders.filter { it.id in selectedOrderIds }
+                        orderVm.archiveAndDeleteOrders(ordersToDelete) { success ->
+                            if (success) {
+                                Toast.makeText(context, "Successfully deleted ${ordersToDelete.size} orders", Toast.LENGTH_SHORT).show()
+                                isSelectionMode = false
+                                selectedOrderIds = emptySet()
+                            } else {
+                                Toast.makeText(context, "Failed to delete orders", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        showDeleteConfirmationDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmationDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     LaunchedEffect(Unit) {
         orderVm.loadAllOrders()
     }
@@ -74,24 +114,64 @@ fun AdminDeliveredOrdersScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Delivered Orders") },
+                title = {
+                    Text(if (isSelectionMode) "${selectedOrderIds.size} Selected" else "Delivered Orders")
+                },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    IconButton(onClick = {
+                        if (isSelectionMode) {
+                            isSelectionMode = false
+                            selectedOrderIds = emptySet()
+                        } else {
+                            onBack()
+                        }
+                    }) {
+                        Icon(if (isSelectionMode) Icons.Default.Close else Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
-                    IconButton(onClick = { orderVm.loadAllOrders() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                    if (isSelectionMode) {
+                        IconButton(onClick = {
+                            if (selectedOrderIds.size == deliveredOrders.size) {
+                                selectedOrderIds = emptySet()
+                            } else {
+                                selectedOrderIds = deliveredOrders.map { it.id }.toSet()
+                            }
+                        }) {
+                            Icon(Icons.Default.SelectAll, contentDescription = "Select All")
+                        }
+
+                        IconButton(onClick = { showDeleteConfirmationDialog = true }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete Selected", tint = MaterialTheme.colorScheme.error)
+                        }
+                    } else {
+                        IconButton(onClick = { orderVm.loadAllOrders() }) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        }
                     }
                 }
             )
         }
     ) { padding ->
         OrderList(
-            orders = deliveredOrders, 
-            orderVm = orderVm, 
-            isDelivered = true, 
+            orders = deliveredOrders,
+            orderVm = orderVm,
+            isDelivered = true,
+            isSelectionMode = isSelectionMode,
+            selectedOrderIds = selectedOrderIds,
+            onOrderSelect = { orderId ->
+                selectedOrderIds = if (selectedOrderIds.contains(orderId)) {
+                    val newSet = selectedOrderIds - orderId
+                    if (newSet.isEmpty()) isSelectionMode = false
+                    newSet
+                } else {
+                    selectedOrderIds + orderId
+                }
+            },
+            onOrderLongClick = { orderId ->
+                isSelectionMode = true
+                selectedOrderIds = selectedOrderIds + orderId
+            },
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
@@ -104,7 +184,11 @@ private fun OrderList(
     orders: List<Order>,
     orderVm: OrderViewModel,
     modifier: Modifier = Modifier,
-    isDelivered: Boolean = false
+    isDelivered: Boolean = false,
+    isSelectionMode: Boolean = false,
+    selectedOrderIds: Set<String> = emptySet(),
+    onOrderSelect: (String) -> Unit = {},
+    onOrderLongClick: (String) -> Unit = {}
 ) {
     if (orders.isEmpty()) {
         Box(modifier = modifier, contentAlignment = Alignment.Center) {
@@ -122,22 +206,84 @@ private fun OrderList(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            items(orders) { order ->
-                OrderCard(order = order, orderVm = orderVm, isDelivered = isDelivered)
+            items(orders, key = { it.id }) { order ->
+                OrderCard(
+                    order = order,
+                    orderVm = orderVm,
+                    isDelivered = isDelivered,
+                    isSelected = selectedOrderIds.contains(order.id),
+                    isSelectionMode = isSelectionMode,
+                    onClick = {
+                        if (isSelectionMode) onOrderSelect(order.id)
+                    },
+                    onLongClick = {
+                        if (!isSelectionMode) onOrderLongClick(order.id)
+                    }
+                )
             }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun OrderCard(order: Order, orderVm: OrderViewModel, isDelivered: Boolean) {
+private fun OrderCard(
+    order: Order,
+    orderVm: OrderViewModel,
+    isDelivered: Boolean,
+    isSelected: Boolean = false,
+    isSelectionMode: Boolean = false,
+    onClick: () -> Unit = {},
+    onLongClick: () -> Unit = {}
+) {
     var showDateDialog by remember { mutableStateOf(false) }
     var deliveryDateInput by remember { mutableStateOf(order.deliveryDate) }
     val context = LocalContext.current
+    var showSingleDeleteConfirmationDialog by remember { mutableStateOf(false) }
+
+    if (showSingleDeleteConfirmationDialog) {
+        AlertDialog(
+            onDismissRequest = { showSingleDeleteConfirmationDialog = false },
+            title = { Text("Confirm Deletion") },
+            text = { Text("Are you sure you want to delete this order? This action cannot be undone.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        orderVm.archiveAndDeleteOrders(listOf(order)) { success ->
+                            if (success) Toast.makeText(context, "Order deleted", Toast.LENGTH_SHORT).show()
+                        }
+                        showSingleDeleteConfirmationDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSingleDeleteConfirmationDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (isDelivered) {
+                    Modifier.combinedClickable(
+                        onClick = onClick,
+                        onLongClick = onLongClick
+                    )
+                } else Modifier
+            ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = if (isSelected) {
+            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+        } else {
+            CardDefaults.cardColors()
+        }
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -145,28 +291,37 @@ private fun OrderCard(order: Order, orderVm: OrderViewModel, isDelivered: Boolea
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Text(
-                        text = "Order ID: ${order.id.takeLast(6)}",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
-                            .format(Date(order.timestamp)),
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (isSelectionMode) {
+                        Checkbox(
+                            checked = isSelected,
+                            onCheckedChange = { onClick() },
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                    }
+                    Column {
+                        Text(
+                            text = "Order ID: ${order.id.takeLast(6)}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
+                                .format(Date(order.timestamp)),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { BillGenerator.downloadBill(context, order) }) {
                         Icon(Icons.Default.Download, contentDescription = "Download Bill")
                     }
-                    if (isDelivered) {
-                        IconButton(onClick = { orderVm.deleteOrder(order.id) }) {
+                    if (isDelivered && !isSelectionMode) {
+                        IconButton(onClick = { showSingleDeleteConfirmationDialog = true }) {
                             Icon(Icons.Default.Delete, contentDescription = "Delete Order", tint = MaterialTheme.colorScheme.error)
                         }
-                    } else {
+                    } else if (!isDelivered) {
                         Surface(
                             color = MaterialTheme.colorScheme.primaryContainer,
                             shape = MaterialTheme.shapes.small
@@ -228,14 +383,14 @@ private fun OrderCard(order: Order, orderVm: OrderViewModel, isDelivered: Boolea
                         text = order.paymentStatus,
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold,
-                        color = when(order.paymentStatus) {
+                        color = when (order.paymentStatus) {
                             "PAID" -> Color(0xFF2E7D32)
                             "AWAITING_APPROVAL" -> Color(0xFFE65100)
                             else -> MaterialTheme.colorScheme.error
                         }
                     )
                 }
-                
+
                 if (order.paymentStatus != "PAID") {
                     Button(
                         onClick = { orderVm.updatePaymentStatus(order.id, "PAID") },
@@ -259,7 +414,7 @@ private fun OrderCard(order: Order, orderVm: OrderViewModel, isDelivered: Boolea
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold
             )
-            
+
             // Display Customer Email
             if (order.userEmail.isNotEmpty()) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
@@ -268,9 +423,9 @@ private fun OrderCard(order: Order, orderVm: OrderViewModel, isDelivered: Boolea
                     Text(text = order.userEmail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(4.dp))
-            
+
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Phone, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(modifier = Modifier.width(4.dp))
@@ -306,7 +461,9 @@ private fun OrderCard(order: Order, orderVm: OrderViewModel, isDelivered: Boolea
                 Button(
                     onClick = { orderVm.updateOrderStatus(order.id, "DELIVERED") },
                     enabled = order.paymentStatus == "PAID",
-                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp),
                     shape = MaterialTheme.shapes.medium
                 ) {
                     Text(if (order.paymentStatus == "PAID") "Mark as Delivered" else "Wait for Payment")

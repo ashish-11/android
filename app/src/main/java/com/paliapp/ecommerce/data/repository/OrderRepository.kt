@@ -1,5 +1,6 @@
 package com.paliapp.ecommerce.data.repository
 
+import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.Query
@@ -9,6 +10,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import java.util.Calendar
 
 class OrderRepository {
     private val db = FirebaseFirestore.getInstance()
@@ -166,6 +168,42 @@ class OrderRepository {
             db.collection("orders").document(orderId).delete().await()
             Result.success(Unit)
         } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun archiveAndDeleteOrders(orders: List<Order>): Result<Unit> {
+        return try {
+            val batch = db.batch()
+            orders.forEach { order ->
+                if (order.id.isBlank()) {
+                    Log.e("OrderRepository", "Skipping archive for order with blank ID")
+                    return@forEach
+                }
+
+                val calendar = Calendar.getInstance().apply {
+                    timeInMillis = if (order.timestamp > 0) order.timestamp else System.currentTimeMillis()
+                }
+                val year = calendar.get(Calendar.YEAR).toString()
+                val month = (calendar.get(Calendar.MONTH) + 1).toString().padStart(2, '0')
+                val week = calendar.get(Calendar.WEEK_OF_YEAR).toString().padStart(2, '0')
+                val day = calendar.get(Calendar.DAY_OF_MONTH).toString().padStart(2, '0')
+
+                val archiveRef = db.collection("archived_orders")
+                    .document(year)
+                    .collection(month)
+                    .document(week)
+                    .collection(day)
+                    .document(order.id)
+
+                val orderRef = db.collection("orders").document(order.id)
+                batch.set(archiveRef, order)
+                batch.delete(orderRef)
+            }
+            batch.commit().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e("OrderRepository", "Error archiving orders: ${e.message}", e)
             Result.failure(e)
         }
     }

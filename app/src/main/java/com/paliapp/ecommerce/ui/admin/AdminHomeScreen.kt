@@ -24,11 +24,17 @@ import com.paliapp.ecommerce.viewmodel.ProductViewModel
 @Composable
 fun AdminHomeScreen(
     onLogout: () -> Unit,
-    authVm: AuthViewModel = viewModel()
+    authVm: AuthViewModel = viewModel(),
+    orderVm: OrderViewModel = viewModel()
 ) {
     var selectedTab by remember { mutableIntStateOf(-1) } // -1 for Dashboard
     var showDetail by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
+
+    // Load orders once at the top level
+    LaunchedEffect(Unit) {
+        orderVm.loadAllOrders()
+    }
 
     if (showLogoutDialog) {
         AlertDialog(
@@ -54,7 +60,7 @@ fun AdminHomeScreen(
     if (showDetail) {
         when (selectedTab) {
             0 -> AdminManageProductsScreen(onBack = { showDetail = false; selectedTab = -1 })
-            1 -> AdminOrdersContainer(onBack = { showDetail = false; selectedTab = -1 })
+            1 -> AdminOrdersContainer(onBack = { showDetail = false; selectedTab = -1 }, orderVm = orderVm)
             3 -> AdminUserApprovalScreen(onBack = { showDetail = false; selectedTab = -1 })
             4 -> AdminSupportSettingsScreen(onBack = { showDetail = false; selectedTab = -1 })
         }
@@ -134,14 +140,15 @@ fun AdminHomeScreen(
                     selectedTab = 1
                     showDetail = true
                 },
-                authVm = authVm
+                authVm = authVm,
+                orderVm = orderVm
             )
         }
     }
 }
 
 @Composable
-fun AdminOrdersContainer(onBack: () -> Unit) {
+fun AdminOrdersContainer(onBack: () -> Unit, orderVm: OrderViewModel) {
     var selectedPage by remember { mutableIntStateOf(0) } // 0 for Pending, 1 for History
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -159,9 +166,9 @@ fun AdminOrdersContainer(onBack: () -> Unit) {
         }
         
         if (selectedPage == 0) {
-            AdminOrdersScreen(onBack = onBack)
+            AdminOrdersScreen(onBack = onBack, orderVm = orderVm)
         } else {
-            AdminDeliveredOrdersScreen(onBack = onBack)
+            AdminDeliveredOrdersScreen(onBack = onBack, orderVm = orderVm)
         }
     }
 }
@@ -172,7 +179,7 @@ fun AdminDashboard(
     onNavigateToUsers: () -> Unit,
     onNavigateToOrders: () -> Unit,
     modifier: Modifier = Modifier,
-    orderVm: OrderViewModel = viewModel(),
+    orderVm: OrderViewModel,
     productVm: ProductViewModel = viewModel(),
     authVm: AuthViewModel = viewModel()
 ) {

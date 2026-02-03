@@ -1,20 +1,23 @@
 package com.paliapp.ecommerce.viewmodel
 
+import android.app.Application
 import android.net.Uri
 import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.storage.FirebaseStorage
 import com.paliapp.ecommerce.data.model.Order
 import com.paliapp.ecommerce.data.repository.OrderRepository
 import com.paliapp.ecommerce.data.repository.SettingsRepository
+import com.paliapp.ecommerce.utils.NotificationHelper
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
-class OrderViewModel : ViewModel() {
+class OrderViewModel(application: Application) : AndroidViewModel(application) {
 
     private val orderRepo = OrderRepository()
     private val settingsRepo = SettingsRepository()
@@ -30,21 +33,40 @@ class OrderViewModel : ViewModel() {
     
     private var ordersJob: Job? = null
     private var customerOrdersJob: Job? = null
+    private var isFirstLoad = true
 
     init {
-        loadAllOrders()
         observeUpiQr()
     }
 
     fun loadAllOrders() {
-        ordersJob?.cancel()
+        if (ordersJob?.isActive == true) return
+        
         ordersJob = viewModelScope.launch {
             try {
-                orderRepo.getAllOrders().collectLatest {
-                    _orders.value = it
+                orderRepo.getAllOrders().collectLatest { newOrders ->
+                    if (!isFirstLoad) {
+                        // Check for new orders
+                        val currentIds = _orders.value.map { it.id }.toSet()
+                        newOrders.forEach { order ->
+                            if (order.id !in currentIds && order.status == "PLACED") {
+                                NotificationHelper.showOrderNotification(
+                                    getApplication(),
+                                    order.id,
+                                    order.userName
+                                )
+                            }
+                        }
+                    }
+                    _orders.value = newOrders
+                    isFirstLoad = false
                 }
             } catch (e: Exception) {
-                Log.w("OrderViewModel", "Failed to collect all orders, likely due to logout.", e)
+                if (e is FirebaseFirestoreException && e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED) {
+                    Log.d("OrderViewModel", "Access denied to all orders (likely due to logout or insufficient role).")
+                } else {
+                    Log.w("OrderViewModel", "Failed to collect all orders.", e)
+                }
                 _orders.value = emptyList()
             }
         }
@@ -57,7 +79,11 @@ class OrderViewModel : ViewModel() {
                     upiQrUrl.value = it
                 }
             } catch (e: Exception) {
-                Log.w("OrderViewModel", "Failed to collect UPI QR URL.", e)
+                if (e is FirebaseFirestoreException && e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED) {
+                    Log.d("OrderViewModel", "Access denied to UPI QR URL (likely due to logout).")
+                } else {
+                    Log.w("OrderViewModel", "Failed to collect UPI QR URL.", e)
+                }
                 upiQrUrl.value = null
             }
         }
@@ -71,7 +97,11 @@ class OrderViewModel : ViewModel() {
                     _customerOrders.value = it
                 }
             } catch (e: Exception) {
-                Log.w("OrderViewModel", "Failed to collect customer orders, likely due to logout.", e)
+                if (e is FirebaseFirestoreException && e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED) {
+                    Log.d("OrderViewModel", "Access denied to customer orders (likely due to logout).")
+                } else {
+                    Log.w("OrderViewModel", "Failed to collect customer orders.", e)
+                }
                 _customerOrders.value = emptyList()
             }
         }
@@ -104,6 +134,13 @@ class OrderViewModel : ViewModel() {
     fun deleteOrder(orderId: String) {
         viewModelScope.launch {
             orderRepo.deleteOrder(orderId)
+        }
+    }
+
+    fun archiveAndDeleteOrders(orders: List<Order>, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val result = orderRepo.archiveAndDeleteOrders(orders)
+            onComplete(result.isSuccess)
         }
     }
 

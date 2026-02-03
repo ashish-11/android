@@ -1,5 +1,6 @@
 package com.paliapp.ecommerce.ui.admin
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -9,6 +10,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.paliapp.ecommerce.viewmodel.SettingsViewModel
@@ -19,6 +21,7 @@ fun AdminSupportSettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel 
     var whatsappNumber by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(true) }
     var isSaving by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     val currentContact by viewModel.adminContact
     
@@ -75,7 +78,14 @@ fun AdminSupportSettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel 
                     onClick = {
                         isSaving = true
                         viewModel.updateSupportSettings(whatsappNumber, "")
-                        isSaving = false
+                            .addOnSuccessListener {
+                                isSaving = false
+                                Toast.makeText(context, "Settings saved successfully", Toast.LENGTH_SHORT).show()
+                            }
+                            .addOnFailureListener { e ->
+                                isSaving = false
+                                Toast.makeText(context, "Failed to save settings: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
                     },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     shape = RoundedCornerShape(12.dp),

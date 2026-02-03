@@ -4,10 +4,14 @@ import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
+import com.google.android.gms.tasks.Task
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.ListenerRegistration
 
 class SettingsViewModel : ViewModel() {
     private val db = FirebaseFirestore.getInstance()
+    private var settingsListener: ListenerRegistration? = null
 
     private val _adminContact = mutableStateOf("")
     val adminContact: State<String> = _adminContact
@@ -20,10 +24,15 @@ class SettingsViewModel : ViewModel() {
     }
 
     private fun loadSettings() {
-        db.collection("settings").document("support")
+        settingsListener?.remove()
+        settingsListener = db.collection("settings").document("support")
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    Log.w("SettingsViewModel", "Error listening to settings: ${error.message}")
+                    if (error.code == FirebaseFirestoreException.Code.PERMISSION_DENIED) {
+                        Log.d("SettingsViewModel", "Access denied to support settings (likely due to logout).")
+                    } else {
+                        Log.w("SettingsViewModel", "Error listening to settings: ${error.message}")
+                    }
                     return@addSnapshotListener
                 }
                 if (snapshot != null && snapshot.exists()) {
@@ -33,11 +42,16 @@ class SettingsViewModel : ViewModel() {
             }
     }
 
-    fun updateSupportSettings(contact: String, message: String) {
+    fun updateSupportSettings(contact: String, message: String): Task<Void> {
         val data = mapOf(
             "contact" to contact,
             "message" to message
         )
-        db.collection("settings").document("support").set(data)
+        return db.collection("settings").document("support").set(data)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        settingsListener?.remove()
     }
 }
