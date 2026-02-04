@@ -1,20 +1,21 @@
 package com.paliapp.ecommerce.ui.customer
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Inventory
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.filled.SupportAgent
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,6 +32,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.paliapp.ecommerce.data.model.Product
 import com.paliapp.ecommerce.viewmodel.CartViewModel
+import com.paliapp.ecommerce.viewmodel.CategoryViewModel
 import com.paliapp.ecommerce.viewmodel.ProductViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -42,7 +44,8 @@ fun ProductListScreen(
     onLogout: () -> Unit,
     onSupport: () -> Unit,
     productVm: ProductViewModel = viewModel(),
-    cartVm: CartViewModel = viewModel()
+    cartVm: CartViewModel = viewModel(),
+    categoryVm: CategoryViewModel = viewModel()
 ) {
     val filteredProducts by productVm.filteredProducts
     val cartItems by cartVm.cartItems
@@ -51,16 +54,19 @@ fun ProductListScreen(
     val scope = rememberCoroutineScope()
     
     var isSearching by remember { mutableStateOf(false) }
-    var selectedImageUrl by remember { mutableStateOf<String?>(null) }
+    var selectedProductForImages by remember { mutableStateOf<Product?>(null) }
+    
+    val categories by categoryVm.categories
 
     LaunchedEffect(Unit) {
         productVm.loadProducts()
+        categoryVm.loadCategories()
     }
 
-    if (selectedImageUrl != null) {
-        FullImageDialog(
-            imageUrl = selectedImageUrl!!,
-            onDismiss = { selectedImageUrl = null }
+    if (selectedProductForImages != null) {
+        ProductImageGalleryDialog(
+            product = selectedProductForImages!!,
+            onDismiss = { selectedProductForImages = null }
         )
     }
 
@@ -90,7 +96,7 @@ fun ProductListScreen(
                 )
             } else {
                 TopAppBar(
-                    title = { Text("WholeSale Shop") },
+                    title = { Text("Wholesale Pandit Mart") },
                     actions = {
                         IconButton(onClick = { isSearching = true }) {
                             Icon(Icons.Default.Search, contentDescription = "Search")
@@ -119,20 +125,52 @@ fun ProductListScreen(
             }
         }
     ) { paddingValues ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            // Category Selector
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                item {
+                    FilterChip(
+                        selected = productVm.selectedCategoryId == "All" || productVm.selectedCategoryId.isEmpty(),
+                        onClick = { productVm.selectedCategoryId = "All" },
+                        label = { Text("All") },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    )
+                }
+                items(categories) { category ->
+                    FilterChip(
+                        selected = productVm.selectedCategoryId == category.id,
+                        onClick = { productVm.selectedCategoryId = category.id },
+                        label = { Text(category.name) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    )
+                }
+            }
+
             if (filteredProducts.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No products found matching '${productVm.searchQuery}'")
+                Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Text("No products found")
                 }
             } else {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
                     modifier = Modifier
-                        .fillMaxSize()
+                        .weight(1f)
                         .background(MaterialTheme.colorScheme.background),
                     contentPadding = PaddingValues(12.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -152,9 +190,7 @@ fun ProductListScreen(
                                 }
                             },
                             onImageClick = {
-                                if (product.imageUrl.isNotEmpty()) {
-                                    selectedImageUrl = product.imageUrl
-                                }
+                                selectedProductForImages = product
                             }
                         )
                     }
@@ -174,6 +210,7 @@ fun ProductGridItem(
     var isAdding by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val isOutOfStock = product.stock <= 0
+    val displayImage = product.imageUrls.firstOrNull() ?: product.imageUrl
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -191,13 +228,30 @@ fun ProductGridItem(
                     .clickable { onImageClick() },
                 contentAlignment = Alignment.Center
             ) {
-                if (product.imageUrl.isNotEmpty()) {
+                if (displayImage.isNotEmpty()) {
                     AsyncImage(
-                        model = product.imageUrl,
+                        model = displayImage,
                         contentDescription = product.name,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
+                    
+                    if (product.imageUrls.size > 1) {
+                        Surface(
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(8.dp),
+                            color = Color.Black.copy(alpha = 0.6f),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                text = "1/${product.imageUrls.size}",
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
                 } else {
                     Icon(
                         Icons.Default.Inventory, 
@@ -319,8 +373,12 @@ fun ProductGridItem(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun FullImageDialog(imageUrl: String, onDismiss: () -> Unit) {
+fun ProductImageGalleryDialog(product: Product, onDismiss: () -> Unit) {
+    val images = if (product.imageUrls.isNotEmpty()) product.imageUrls else listOf(product.imageUrl)
+    val pagerState = rememberPagerState(pageCount = { images.size })
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -329,23 +387,62 @@ fun FullImageDialog(imageUrl: String, onDismiss: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black)
-                .clickable { onDismiss() },
-            contentAlignment = Alignment.Center
         ) {
-            AsyncImage(
-                model = imageUrl,
-                contentDescription = "Full Product Image",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Fit
-            )
-            IconButton(
-                onClick = onDismiss,
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize()
+            ) { page ->
+                AsyncImage(
+                    model = images[page],
+                    contentDescription = "Product Image $page",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
+                )
+            }
+
+            // Indicator Dots
+            if (images.size > 1) {
+                Row(
+                    Modifier
+                        .height(50.dp)
+                        .fillMaxWidth()
+                        .align(Alignment.BottomCenter),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    repeat(images.size) { iteration ->
+                        val color = if (pagerState.currentPage == iteration) Color.White else Color.Gray
+                        Box(
+                            modifier = Modifier
+                                .padding(4.dp)
+                                .clip(CircleShape)
+                                .background(color)
+                                .size(8.dp)
+                        )
+                    }
+                }
+            }
+
+            // Header with Name and Close Button
+            Row(
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
+                    .fillMaxWidth()
                     .padding(16.dp)
-                    .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
+                    .align(Alignment.TopStart),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                Text(
+                    text = product.name,
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                ) {
+                    Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                }
             }
         }
     }

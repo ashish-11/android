@@ -1,12 +1,17 @@
 package com.paliapp.ecommerce.ui.customer
 
+import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.google.firebase.auth.FirebaseAuth
+import com.paliapp.ecommerce.data.model.CartItem
 import com.paliapp.ecommerce.data.model.Order
 import com.paliapp.ecommerce.utils.BillGenerator
 import com.paliapp.ecommerce.viewmodel.OrderViewModel
@@ -34,6 +40,8 @@ fun CustomerOrdersScreen(
     val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
     val orders = orderVm.customerOrders.value
     var orderToPay by remember { mutableStateOf<Order?>(null) }
+    var orderForReturn by remember { mutableStateOf<Order?>(null) }
+    val context = LocalContext.current
 
     LaunchedEffect(userId) {
         if (userId.isNotEmpty()) {
@@ -77,7 +85,11 @@ fun CustomerOrdersScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(orders) { order ->
-                    OrderCard(order = order, onPay = { orderToPay = order })
+                    OrderCard(
+                        order = order, 
+                        onPay = { orderToPay = order },
+                        onRequestReturn = { orderForReturn = order }
+                    )
                 }
             }
         }
@@ -94,11 +106,31 @@ fun CustomerOrdersScreen(
             }
         )
     }
+
+    if (orderForReturn != null) {
+        PartialReturnDialog(
+            order = orderForReturn!!,
+            onDismiss = { orderForReturn = null },
+            onConfirm = { reason, updatedItems ->
+                orderVm.requestPartialReturn(orderForReturn!!.id, reason, updatedItems) { success ->
+                    if (success) {
+                        Toast.makeText(context, "Return request submitted", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, "Failed to submit request", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                orderForReturn = null
+            }
+        )
+    }
 }
 
 @Composable
-fun OrderCard(order: Order, onPay: () -> Unit) {
+fun OrderCard(order: Order, onPay: () -> Unit, onRequestReturn: () -> Unit) {
     val context = LocalContext.current
+    val canRequestReturn = order.status == "DELIVERED" && order.items.any { it.isReturnable && it.status == "DELIVERED" }
+    val isPartiallyReturned = order.status == "RETURNED" && order.items.any { it.status == "DELIVERED" }
+    
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -118,7 +150,9 @@ fun OrderCard(order: Order, onPay: () -> Unit) {
                         Icon(Icons.Default.Download, contentDescription = "Download Bill", modifier = Modifier.size(18.dp))
                     }
                     Spacer(modifier = Modifier.width(8.dp))
-                    StatusBadge(status = order.status)
+                    
+                    // Display Partial Returned status if applicable
+                    StatusBadge(status = if (isPartiallyReturned) "PARTIAL_RETURNED" else order.status)
                 }
             }
             
@@ -130,33 +164,97 @@ fun OrderCard(order: Order, onPay: () -> Unit) {
             )
 
             if (order.deliveryDate.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                    shape = MaterialTheme.shapes.extraSmall
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(4.dp)
                 ) {
-                    Text(
-                        text = "Expected Delivery: ${order.deliveryDate}",
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Delivery Date: ",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        Text(
+                            text = order.deliveryDate,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
                 }
             }
 
             Divider(modifier = Modifier.padding(vertical = 8.dp))
 
+            // ORIGINAL ITEMS SECTION
+            Text(text = "Order Summary", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
             order.items.forEach { item ->
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(
-                        text = "${item.name} x ${item.qty}",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        text = "₹${item.price * item.qty}",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "${item.name} x ${item.qty}",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            // Display Return Eligibility
+                            if (item.isReturnable) {
+                                Text(
+                                    text = "Returnable within ${item.returnWindowDays} days",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color(0xFF388E3C)
+                                )
+                            } else {
+                                Text(
+                                    text = "Non-returnable",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.Gray
+                                )
+                            }
+                        }
+                        Text(
+                            text = "₹${item.price * item.qty}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
+
+            // RETURNED ITEMS SECTION (If any)
+            val returnedItems = order.items.filter { it.returnQty > 0 }
+            if (returnedItems.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Divider()
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(text = "Return Details", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color(0xFFD84315))
+                returnedItems.forEach { item ->
+                    val statusColor = when(item.status) {
+                        "RETURN_REJECTED" -> Color.Red
+                        "RETURNED", "REFUNDED" -> Color(0xFF388E3C)
+                        else -> Color(0xFFE65100)
+                    }
+                    val bgStatusColor = statusColor.copy(alpha = 0.1f)
+
+                    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(
+                            text = "${item.name} (Qty: ${item.returnQty})",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = statusColor
+                        )
+                        Surface(color = bgStatusColor, shape = RoundedCornerShape(4.dp)) {
+                            Text(
+                                text = item.status.replace("_", " "),
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = statusColor,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                 }
             }
 
@@ -168,54 +266,150 @@ fun OrderCard(order: Order, onPay: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text(
-                        text = "Total Amount",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text(text = "Total Amount", style = MaterialTheme.typography.labelSmall)
                     Text(
                         text = "₹${order.totalAmount}",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
                 
-                when {
-                    order.status == "CANCELLED" -> {
-                        Text("CANCELLED", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
-                    }
-                    order.paymentStatus == "PAID" -> {
-                        Text("PAID", color = Color(0xFF2E7D32), fontWeight = FontWeight.ExtraBold)
-                    }
-                    order.paymentStatus == "AWAITING_APPROVAL" -> {
-                        Surface(color = Color(0xFFFFF3E0), shape = MaterialTheme.shapes.small) {
-                            Text(
-                                "Awaiting Admin Approval",
-                                modifier = Modifier.padding(8.dp),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color(0xFFE65100),
-                                fontWeight = FontWeight.Bold
-                            )
+                Column(horizontalAlignment = Alignment.End) {
+                    when {
+                        order.status == "RETURN_REQUESTED" -> {
+                            Text("RETURN REQUESTED", color = Color(0xFFE65100), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                         }
-                    }
-                    else -> {
-                        Button(onClick = onPay) {
-                            Text(if (order.paymentMethod.isEmpty()) "Pay Now" else "Change Payment")
+                        order.status == "RETURNED" -> {
+                            Text(if (isPartiallyReturned) "PARTIAL RETURNED" else "RETURNED", color = Color(0xFF2E7D32), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                        }
+                        order.status == "CANCELLED" -> {
+                            Text("CANCELLED", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                        }
+                        order.paymentStatus == "PENDING" && order.status == "PLACED" -> {
+                            Button(onClick = onPay) {
+                                Text(if (order.paymentMethod.isEmpty()) "Pay Now" else "Change Payment")
+                            }
+                        }
+                        canRequestReturn -> {
+                            OutlinedButton(onClick = onRequestReturn) {
+                                Text("Request Return")
+                            }
+                        }
+                        else -> {
+                            val paymentText = if (order.paymentStatus == "PAID") "PAID" else "PAYMENT: ${order.paymentStatus}"
+                            val paymentColor = if (order.paymentStatus == "PAID") Color(0xFF2E7D32) else Color(0xFFE65100)
+                            Text(paymentText, color = paymentColor, fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.labelLarge)
                         }
                     }
                 }
             }
-            
-            if (order.paymentMethod.isNotEmpty()) {
-                Text(
-                    text = "Method: ${order.paymentMethod}",
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
         }
     }
+}
+
+@Composable
+fun PartialReturnDialog(
+    order: Order,
+    onDismiss: () -> Unit,
+    onConfirm: (String, List<CartItem>) -> Unit
+) {
+    var reason by remember { mutableStateOf("") }
+    val returnableItems = order.items.filter { it.isReturnable && it.status == "DELIVERED" }
+    val returnQuantities = remember { 
+        mutableStateMapOf<String, Int>().apply {
+            returnableItems.forEach { put(it.id, 0) }
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Return Items") },
+        text = {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                item {
+                    Text("Select items and quantities you wish to return.", style = MaterialTheme.typography.bodyMedium)
+                }
+                
+                items(returnableItems) { item ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = item.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                            Text(text = "Purchased: ${item.qty}", style = MaterialTheme.typography.labelSmall)
+                        }
+                        
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(
+                                onClick = { 
+                                    val current = returnQuantities[item.id] ?: 0
+                                    if (current > 0) returnQuantities[item.id] = current - 1
+                                },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(Icons.Default.Remove, contentDescription = null)
+                            }
+                            
+                            Text(
+                                text = (returnQuantities[item.id] ?: 0).toString(),
+                                modifier = Modifier.padding(horizontal = 8.dp),
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            
+                            IconButton(
+                                onClick = { 
+                                    val current = returnQuantities[item.id] ?: 0
+                                    if (current < item.qty) returnQuantities[item.id] = current + 1
+                                },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = null)
+                            }
+                        }
+                    }
+                }
+                
+                item {
+                    OutlinedTextField(
+                        value = reason,
+                        onValueChange = { reason = it },
+                        label = { Text("Reason for Return (Optional)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 2
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            val totalToReturn = returnQuantities.values.sum()
+            Button(
+                onClick = {
+                    val updatedItems = order.items.map { item ->
+                        val rQty = returnQuantities[item.id] ?: 0
+                        if (rQty > 0) {
+                            item.copy(
+                                status = "RETURN_REQUESTED",
+                                returnQty = rQty
+                            ) 
+                        } else {
+                            item
+                        }
+                    }
+                    onConfirm(reason, updatedItems)
+                },
+                enabled = totalToReturn > 0
+            ) {
+                Text("Submit Request")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
 }
 
 @Composable
@@ -272,12 +466,8 @@ fun PaymentMethodDialog(
     )
 }
 
-/**
- * Converts a Google Drive share link to a direct image URL.
- */
 private fun getDirectImageUrl(url: String): String {
     return if (url.contains("drive.google.com")) {
-        // Handle links like: https://drive.google.com/file/d/FILE_ID/view?usp=sharing
         val fileId = if (url.contains("/d/")) {
             url.substringAfter("/d/").substringBefore("/")
         } else if (url.contains("id=")) {
@@ -285,7 +475,6 @@ private fun getDirectImageUrl(url: String): String {
         } else {
             ""
         }
-        
         if (fileId.isNotEmpty()) {
             "https://drive.google.com/uc?export=view&id=$fileId"
         } else {
@@ -298,15 +487,28 @@ private fun getDirectImageUrl(url: String): String {
 
 @Composable
 private fun StatusBadge(status: String) {
-    val color = if (status == "PLACED") Color(0xFF1976D2) else Color(0xFF388E3C)
-    val bgColor = if (status == "PLACED") Color(0xFFE3F2FD) else Color(0xFFE8F5E9)
+    val color = when (status) {
+        "PLACED" -> Color(0xFF1976D2)
+        "DELIVERED" -> Color(0xFF388E3C)
+        "RETURN_REQUESTED" -> Color(0xFFE65100)
+        "RETURNED" -> Color(0xFF388E3C)
+        "PARTIAL_RETURNED" -> Color(0xFF2E7D32)
+        "CANCELLED" -> Color(0xFFD32F2F)
+        "RETURN_REJECTED" -> Color(0xFFD32F2F)
+        else -> Color.Gray
+    }
+    val bgColor = color.copy(alpha = 0.1f)
     
     Surface(
         color = bgColor,
         shape = MaterialTheme.shapes.small
     ) {
+        val text = when(status) {
+            "PARTIAL_RETURNED" -> "PARTIAL RETURNED"
+            else -> status.replace("_", " ")
+        }
         Text(
-            text = status,
+            text = text,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
             style = MaterialTheme.typography.labelMedium,
             color = color,

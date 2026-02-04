@@ -11,7 +11,10 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.storage.FirebaseStorage
 import com.paliapp.ecommerce.data.model.Product
 import com.paliapp.ecommerce.data.repository.ProductRepository
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import java.util.UUID
 
 class ProductViewModel : ViewModel() {
@@ -23,12 +26,19 @@ class ProductViewModel : ViewModel() {
     val products: State<List<Product>> = _products
 
     var searchQuery by mutableStateOf("")
+    var selectedCategoryId by mutableStateOf("") // Now using ID instead of name
 
     val filteredProducts = derivedStateOf {
-        if (searchQuery.isEmpty()) {
+        val filteredByCategory = if (selectedCategoryId.isEmpty() || selectedCategoryId == "All") {
             _products.value
         } else {
-            _products.value.filter { 
+            _products.value.filter { it.categoryId == selectedCategoryId }
+        }
+
+        if (searchQuery.isEmpty()) {
+            filteredByCategory
+        } else {
+            filteredByCategory.filter { 
                 it.name.contains(searchQuery, ignoreCase = true) 
             }
         }
@@ -46,60 +56,51 @@ class ProductViewModel : ViewModel() {
         }
     }
 
-    fun addProduct(product: Product, imageUri: Uri? = null, onDone: (Boolean) -> Unit) {
+    fun addProduct(product: Product, imageUris: List<Uri> = emptyList(), onDone: (Boolean) -> Unit) {
         viewModelScope.launch {
-            if (imageUri != null) {
-                uploadImage(imageUri) { url ->
-                    if (url != null) {
-                        viewModelScope.launch {
-                            val result = repo.addProduct(product.copy(imageUrl = url))
-                            if (result.isSuccess) loadAllProductsForAdmin()
-                            onDone(result.isSuccess)
-                        }
-                    } else {
-                        onDone(false)
-                    }
-                }
-            } else {
-                val result = repo.addProduct(product)
+            try {
+                val urls = uploadMultipleImages(imageUris)
+                val newProduct = product.copy(
+                    imageUrls = urls,
+                    imageUrl = urls.firstOrNull() ?: product.imageUrl
+                )
+                val result = repo.addProduct(newProduct)
                 if (result.isSuccess) loadAllProductsForAdmin()
                 onDone(result.isSuccess)
+            } catch (e: Exception) {
+                onDone(false)
             }
         }
     }
 
-    fun updateProduct(product: Product, imageUri: Uri? = null, onDone: (Boolean) -> Unit) {
+    fun updateProduct(product: Product, newImageUris: List<Uri> = emptyList(), onDone: (Boolean) -> Unit) {
         viewModelScope.launch {
-            if (imageUri != null) {
-                uploadImage(imageUri) { url ->
-                    if (url != null) {
-                        viewModelScope.launch {
-                            val result = repo.updateProduct(product.copy(imageUrl = url))
-                            if (result.isSuccess) loadAllProductsForAdmin()
-                            onDone(result.isSuccess)
-                        }
-                    } else {
-                        onDone(false)
-                    }
-                }
-            } else {
-                val result = repo.updateProduct(product)
+            try {
+                val newUrls = uploadMultipleImages(newImageUris)
+                // Combine existing URLs that weren't replaced, up to 5 total
+                val totalUrls = (product.imageUrls + newUrls).take(5)
+                val updatedProduct = product.copy(
+                    imageUrls = totalUrls,
+                    imageUrl = totalUrls.firstOrNull() ?: product.imageUrl
+                )
+                val result = repo.updateProduct(updatedProduct)
                 if (result.isSuccess) loadAllProductsForAdmin()
                 onDone(result.isSuccess)
+            } catch (e: Exception) {
+                onDone(false)
             }
         }
     }
 
-    private fun uploadImage(uri: Uri, onResult: (String?) -> Unit) {
-        val fileName = UUID.randomUUID().toString()
-        val ref = storage.reference.child("products/$fileName")
-        ref.putFile(uri)
-            .addOnSuccessListener {
-                ref.downloadUrl.addOnSuccessListener { url ->
-                    onResult(url.toString())
-                }.addOnFailureListener { onResult(null) }
+    private suspend fun uploadMultipleImages(uris: List<Uri>): List<String> {
+        return uris.take(5).map { uri ->
+            viewModelScope.async {
+                val fileName = UUID.randomUUID().toString()
+                val ref = storage.reference.child("products/$fileName")
+                ref.putFile(uri).await()
+                ref.downloadUrl.await().toString()
             }
-            .addOnFailureListener { onResult(null) }
+        }.awaitAll()
     }
 
     fun deleteProduct(productId: String, onDone: (Boolean) -> Unit) {

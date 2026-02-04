@@ -48,7 +48,9 @@ class CartRepository {
                         name = product.name,
                         price = product.price,
                         qty = quantity,
-                        imageUrl = product.imageUrl
+                        imageUrl = product.imageUrl,
+                        isReturnable = product.isReturnable,
+                        returnWindowDays = product.returnWindowDays
                     )
                     it.set(itemRef, cartItem)
                 }

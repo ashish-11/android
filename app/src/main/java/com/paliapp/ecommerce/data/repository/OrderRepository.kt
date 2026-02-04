@@ -67,7 +67,6 @@ class OrderRepository {
     ): Result<Unit> {
         return try {
             db.runTransaction { transaction ->
-                // 1. Validate stock and prepare updates
                 val productUpdates = items.map { item ->
                     val productRef = db.collection("products").document(item.id)
                     val productSnap = transaction.get(productRef)
@@ -84,12 +83,10 @@ class OrderRepository {
                     productRef to (currentStock - item.qty)
                 }
 
-                // 2. Perform updates
                 productUpdates.forEach { (ref, newStock) ->
                     transaction.update(ref, "stock", newStock)
                 }
 
-                // 3. Create Order
                 val totalAmount = items.sumOf { it.price * it.qty }
                 val orderRef = db.collection("orders").document()
                 val order = Order(
@@ -108,13 +105,11 @@ class OrderRepository {
                 )
                 transaction.set(orderRef, order)
 
-                // 4. Clear Cart (Batch deletion in transaction)
                 items.forEach { item ->
                     val itemRef = db.collection("carts").document(userId).collection("items").document(item.id)
                     transaction.delete(itemRef)
                 }
                 
-                // 5. Update user address
                 transaction.update(db.collection("users").document(userId), "address", address)
             }.await()
             Result.success(Unit)
@@ -126,6 +121,85 @@ class OrderRepository {
     suspend fun updateOrderStatus(orderId: String, status: String): Result<Unit> {
         return try {
             db.collection("orders").document(orderId).update("status", status).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun requestPartialReturn(orderId: String, reason: String, returnedItems: List<CartItem>): Result<Unit> {
+        return try {
+            val updates = mapOf(
+                "status" to "RETURN_REQUESTED",
+                "returnReason" to reason,
+                "returnRequestDate" to System.currentTimeMillis(),
+                "items" to returnedItems // This list now contains updated statuses for specific items
+            )
+            db.collection("orders").document(orderId).update(updates).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun approveReturn(order: Order, adminNote: String): Result<Unit> {
+        return try {
+            val updatedItems = order.items.map { item ->
+                if (item.status == "RETURN_REQUESTED") {
+                    item.copy(status = "RETURN_APPROVED")
+                } else {
+                    item
+                }
+            }
+            val updates = mapOf(
+                "status" to "RETURN_APPROVED",
+                "items" to updatedItems,
+                "returnAdminNote" to adminNote
+            )
+            db.collection("orders").document(order.id).update(updates).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun markAsRefunded(order: Order): Result<Unit> {
+        return try {
+            val refundAmount = order.items.filter { it.status == "RETURN_APPROVED" }.sumOf { it.price * it.returnQty }
+            val updatedItems = order.items.map { item ->
+                if (item.status == "RETURN_APPROVED") {
+                    item.copy(status = "REFUNDED")
+                } else {
+                    item
+                }
+            }
+            val updates = mapOf(
+                "status" to "REFUNDED",
+                "items" to updatedItems,
+                "totalAmount" to (order.totalAmount - refundAmount)
+            )
+            db.collection("orders").document(order.id).update(updates).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun rejectReturn(order: Order, adminNote: String): Result<Unit> {
+        return try {
+            val updatedItems = order.items.map { item ->
+                if (item.status == "RETURN_REQUESTED") {
+                    item.copy(status = "RETURN_REJECTED")
+                } else {
+                    item
+                }
+            }
+            val updates = mapOf(
+                "status" to "DELIVERED",
+                "items" to updatedItems,
+                "returnAdminNote" to adminNote
+            )
+            db.collection("orders").document(order.id).update(updates).await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -176,10 +250,7 @@ class OrderRepository {
         return try {
             val batch = db.batch()
             orders.forEach { order ->
-                if (order.id.isBlank()) {
-                    Log.e("OrderRepository", "Skipping archive for order with blank ID")
-                    return@forEach
-                }
+                if (order.id.isBlank()) return@forEach
 
                 val calendar = Calendar.getInstance().apply {
                     timeInMillis = if (order.timestamp > 0) order.timestamp else System.currentTimeMillis()
@@ -203,7 +274,6 @@ class OrderRepository {
             batch.commit().await()
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e("OrderRepository", "Error archiving orders: ${e.message}", e)
             Result.failure(e)
         }
     }

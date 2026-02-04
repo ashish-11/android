@@ -13,18 +13,26 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.unit.dp
 import com.paliapp.ecommerce.data.model.Product
+import com.paliapp.ecommerce.viewmodel.CategoryViewModel
 import com.paliapp.ecommerce.viewmodel.ProductViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddProductScreen(
     onBack: () -> Unit,
-    vm: ProductViewModel = viewModel()
+    vm: ProductViewModel = viewModel(),
+    categoryVm: CategoryViewModel = viewModel()
 ) {
     var name by remember { mutableStateOf("") }
     var price by remember { mutableStateOf("") }
     var stock by remember { mutableStateOf("") }
+    var selectedCategoryId by remember { mutableStateOf("") }
     var imageUri by remember { mutableStateOf<Uri?>(null) }
+    
+    val categories by categoryVm.categories
+    var expanded by remember { mutableStateOf(false) }
+
+    val selectedCategoryName = categories.find { it.id == selectedCategoryId }?.name ?: "None"
 
     Scaffold(
         topBar = {
@@ -54,6 +62,36 @@ fun AddProductScreen(
                 shape = RoundedCornerShape(12.dp)
             )
             
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedTextField(
+                    value = selectedCategoryName,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Category") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    modifier = Modifier.menuAnchor().fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    categories.forEach { selectionOption ->
+                        DropdownMenuItem(
+                            text = { Text(selectionOption.name) },
+                            onClick = {
+                                selectedCategoryId = selectionOption.id
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+            
             OutlinedTextField(
                 value = price,
                 onValueChange = { price = it },
@@ -78,9 +116,10 @@ fun AddProductScreen(
                         Product(
                             name = name,
                             price = price.toDoubleOrNull() ?: 0.0,
-                            stock = stock.toIntOrNull() ?: 100
+                            stock = stock.toIntOrNull() ?: 100,
+                            categoryId = selectedCategoryId
                         ),
-                        imageUri = imageUri
+                        imageUris = listOfNotNull(imageUri)
                     ) { success ->
                         if (success) {
                             onBack()

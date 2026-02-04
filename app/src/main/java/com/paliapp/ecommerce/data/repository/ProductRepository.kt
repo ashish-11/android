@@ -76,4 +76,22 @@ class ProductRepository {
             Result.failure(e)
         }
     }
+
+    suspend fun resetProductCategory(categoryId: String): Result<Unit> {
+        return try {
+            val querySnapshot = db.collection("products")
+                .whereEqualTo("categoryId", categoryId)
+                .get()
+                .await()
+            
+            val batch = db.batch()
+            for (document in querySnapshot.documents) {
+                batch.update(document.reference, "categoryId", "")
+            }
+            batch.commit().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

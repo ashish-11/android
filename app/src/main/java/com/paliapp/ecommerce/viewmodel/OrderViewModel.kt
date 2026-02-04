@@ -9,6 +9,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.storage.FirebaseStorage
+import com.paliapp.ecommerce.data.model.CartItem
 import com.paliapp.ecommerce.data.model.Order
 import com.paliapp.ecommerce.data.repository.OrderRepository
 import com.paliapp.ecommerce.data.repository.SettingsRepository
@@ -46,7 +47,6 @@ class OrderViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 orderRepo.getAllOrders().collectLatest { newOrders ->
                     if (!isFirstLoad) {
-                        // Check for new orders
                         val currentIds = _orders.value.map { it.id }.toSet()
                         newOrders.forEach { order ->
                             if (order.id !in currentIds && order.status == "PLACED") {
@@ -63,7 +63,7 @@ class OrderViewModel(application: Application) : AndroidViewModel(application) {
                 }
             } catch (e: Exception) {
                 if (e is FirebaseFirestoreException && e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED) {
-                    Log.d("OrderViewModel", "Access denied to all orders (likely due to logout or insufficient role).")
+                    Log.d("OrderViewModel", "Access denied to all orders.")
                 } else {
                     Log.w("OrderViewModel", "Failed to collect all orders.", e)
                 }
@@ -79,11 +79,6 @@ class OrderViewModel(application: Application) : AndroidViewModel(application) {
                     upiQrUrl.value = it
                 }
             } catch (e: Exception) {
-                if (e is FirebaseFirestoreException && e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED) {
-                    Log.d("OrderViewModel", "Access denied to UPI QR URL (likely due to logout).")
-                } else {
-                    Log.w("OrderViewModel", "Failed to collect UPI QR URL.", e)
-                }
                 upiQrUrl.value = null
             }
         }
@@ -97,11 +92,6 @@ class OrderViewModel(application: Application) : AndroidViewModel(application) {
                     _customerOrders.value = it
                 }
             } catch (e: Exception) {
-                if (e is FirebaseFirestoreException && e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED) {
-                    Log.d("OrderViewModel", "Access denied to customer orders (likely due to logout).")
-                } else {
-                    Log.w("OrderViewModel", "Failed to collect customer orders.", e)
-                }
                 _customerOrders.value = emptyList()
             }
         }
@@ -110,6 +100,31 @@ class OrderViewModel(application: Application) : AndroidViewModel(application) {
     fun updateOrderStatus(orderId: String, newStatus: String) {
         viewModelScope.launch {
             orderRepo.updateOrderStatus(orderId, newStatus)
+        }
+    }
+
+    fun requestPartialReturn(orderId: String, reason: String, items: List<CartItem>, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val result = orderRepo.requestPartialReturn(orderId, reason, items)
+            onComplete(result.isSuccess)
+        }
+    }
+
+    fun approveReturn(order: Order, adminNote: String) {
+        viewModelScope.launch {
+            orderRepo.approveReturn(order, adminNote)
+        }
+    }
+
+    fun markAsRefunded(order: Order) {
+        viewModelScope.launch {
+            orderRepo.markAsRefunded(order)
+        }
+    }
+
+    fun rejectReturn(order: Order, adminNote: String) {
+        viewModelScope.launch {
+            orderRepo.rejectReturn(order, adminNote)
         }
     }
 
@@ -149,17 +164,13 @@ class OrderViewModel(application: Application) : AndroidViewModel(application) {
         ref.putFile(uri)
             .addOnSuccessListener {
                 ref.downloadUrl.addOnSuccessListener { url ->
-                    updateUpiQr(url.toString())
+                    viewModelScope.launch {
+                        settingsRepo.updateUpiQrUrl(url.toString())
+                    }
                     onResult(true)
                 }.addOnFailureListener { onResult(false) }
             }
             .addOnFailureListener { onResult(false) }
-    }
-
-    private fun updateUpiQr(url: String) {
-        viewModelScope.launch {
-            settingsRepo.updateUpiQrUrl(url)
-        }
     }
 
     override fun onCleared() {

@@ -38,7 +38,7 @@ object BillGenerator {
         titlePaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         titlePaint.textSize = 20f
         titlePaint.textAlign = Paint.Align.CENTER
-        canvas.drawText("WHOLESALE SHOP", (595 / 2).toFloat(), startY, titlePaint)
+        canvas.drawText("WHOLESALE PANDIT MART", (595 / 2).toFloat(), startY, titlePaint)
 
         startY += 30f
         titlePaint.textSize = 14f
