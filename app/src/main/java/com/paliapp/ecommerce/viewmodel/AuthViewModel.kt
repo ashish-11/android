@@ -129,7 +129,7 @@ class AuthViewModel : ViewModel() {
             uiState = result.fold(
                 onSuccess = {
                     repo.logout()
-                    AuthUiState.Error("Registration successful! Please wait for Admin approval.")
+                    AuthUiState.Registered
                 },
                 onFailure = {
                     AuthUiState.Error(it.message ?: "Register failed")
@@ -198,6 +198,10 @@ class AuthViewModel : ViewModel() {
         } catch (e: Exception) {
             Log.e("AuthViewModel", "Error in logout", e)
         }
+    }
+
+    fun clearState() {
+        uiState = AuthUiState.Idle
     }
 
     override fun onCleared() {

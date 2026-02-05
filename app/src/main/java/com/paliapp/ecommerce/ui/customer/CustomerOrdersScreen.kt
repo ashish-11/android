@@ -52,17 +52,17 @@ fun CustomerOrdersScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("My Orders") },
+                title = { Text("मेरे आर्डर") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "पीछे")
                     }
                 },
                 actions = {
                     IconButton(onClick = { 
                         if (userId.isNotEmpty()) orderVm.loadCustomerOrders(userId) 
                     }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        Icon(Icons.Default.Refresh, contentDescription = "अपडेट")
                     }
                 }
             )
@@ -71,10 +71,10 @@ fun CustomerOrdersScreen(
         if (orders.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("You haven't placed any orders yet.")
+                    Text("आपने अभी तक कोई आर्डर नहीं दिया है।")
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(onClick = { if (userId.isNotEmpty()) orderVm.loadCustomerOrders(userId) }) {
-                        Text("Refresh")
+                        Text("अपडेट करें")
                     }
                 }
             }
@@ -114,9 +114,9 @@ fun CustomerOrdersScreen(
             onConfirm = { reason, updatedItems ->
                 orderVm.requestPartialReturn(orderForReturn!!.id, reason, updatedItems) { success ->
                     if (success) {
-                        Toast.makeText(context, "Return request submitted", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "वापसी (Return) की गुज़ारिश भेज दी गई है", Toast.LENGTH_SHORT).show()
                     } else {
-                        Toast.makeText(context, "Failed to submit request", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "गुज़ारिश भेजने में दिक्कत हुई", Toast.LENGTH_SHORT).show()
                     }
                 }
                 orderForReturn = null
@@ -141,17 +141,16 @@ fun OrderCard(order: Order, onPay: () -> Unit, onRequestReturn: () -> Unit) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "Order ID: ${order.id.takeLast(6)}",
+                    text = "आर्डर नंबर: ${order.id.takeLast(6)}",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { BillGenerator.downloadBill(context, order) }, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Download, contentDescription = "Download Bill", modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Download, contentDescription = "बिल डाउनलोड", modifier = Modifier.size(18.dp))
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     
-                    // Display Partial Returned status if applicable
                     StatusBadge(status = if (isPartiallyReturned) "PARTIAL_RETURNED" else order.status)
                 }
             }
@@ -174,7 +173,7 @@ fun OrderCard(order: Order, onPay: () -> Unit, onRequestReturn: () -> Unit) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Delivery Date: ",
+                            text = "डिलीवरी की तारीख: ",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
@@ -190,8 +189,7 @@ fun OrderCard(order: Order, onPay: () -> Unit, onRequestReturn: () -> Unit) {
 
             Divider(modifier = Modifier.padding(vertical = 8.dp))
 
-            // ORIGINAL ITEMS SECTION
-            Text(text = "Order Summary", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+            Text(text = "सामान का विवरण", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
             order.items.forEach { item ->
                 Column(modifier = Modifier.padding(vertical = 4.dp)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -200,16 +198,15 @@ fun OrderCard(order: Order, onPay: () -> Unit, onRequestReturn: () -> Unit) {
                                 text = "${item.name} x ${item.qty}",
                                 style = MaterialTheme.typography.bodyMedium
                             )
-                            // Display Return Eligibility
                             if (item.isReturnable) {
                                 Text(
-                                    text = "Returnable within ${item.returnWindowDays} days",
+                                    text = "${item.returnWindowDays} दिनों में वापस कर सकते हैं",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = Color(0xFF388E3C)
                                 )
                             } else {
                                 Text(
-                                    text = "Non-returnable",
+                                    text = "वापस नहीं होगा",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = Color.Gray
                                 )
@@ -224,13 +221,12 @@ fun OrderCard(order: Order, onPay: () -> Unit, onRequestReturn: () -> Unit) {
                 }
             }
 
-            // RETURNED ITEMS SECTION (If any)
             val returnedItems = order.items.filter { it.returnQty > 0 }
             if (returnedItems.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Divider()
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(text = "Return Details", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color(0xFFD84315))
+                Text(text = "वापसी की जानकारी", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color(0xFFD84315))
                 returnedItems.forEach { item ->
                     val statusColor = when(item.status) {
                         "RETURN_REJECTED" -> Color.Red
@@ -241,13 +237,20 @@ fun OrderCard(order: Order, onPay: () -> Unit, onRequestReturn: () -> Unit) {
 
                     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(
-                            text = "${item.name} (Qty: ${item.returnQty})",
+                            text = "${item.name} (वापसी Qty: ${item.returnQty})",
                             style = MaterialTheme.typography.bodySmall,
                             color = statusColor
                         )
                         Surface(color = bgStatusColor, shape = RoundedCornerShape(4.dp)) {
+                            val hindiStatus = when(item.status) {
+                                "RETURNED" -> "वापस हो गया"
+                                "REFUNDED" -> "पैसे लौटा दिए"
+                                "RETURN_REJECTED" -> "वापसी रद्द"
+                                "RETURN_REQUESTED" -> "गुज़ारिश भेजी है"
+                                else -> item.status
+                            }
                             Text(
-                                text = item.status.replace("_", " "),
+                                text = hindiStatus,
                                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = statusColor,
@@ -266,7 +269,7 @@ fun OrderCard(order: Order, onPay: () -> Unit, onRequestReturn: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text(text = "Total Amount", style = MaterialTheme.typography.labelSmall)
+                    Text(text = "कुल रकम", style = MaterialTheme.typography.labelSmall)
                     Text(
                         text = "₹${order.totalAmount}",
                         style = MaterialTheme.typography.titleMedium,
@@ -278,26 +281,26 @@ fun OrderCard(order: Order, onPay: () -> Unit, onRequestReturn: () -> Unit) {
                 Column(horizontalAlignment = Alignment.End) {
                     when {
                         order.status == "RETURN_REQUESTED" -> {
-                            Text("RETURN REQUESTED", color = Color(0xFFE65100), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                            Text("वापसी की गुज़ारिश", color = Color(0xFFE65100), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                         }
                         order.status == "RETURNED" -> {
-                            Text(if (isPartiallyReturned) "PARTIAL RETURNED" else "RETURNED", color = Color(0xFF2E7D32), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                            Text(if (isPartiallyReturned) "कुछ सामान वापस" else "वापस हो गया", color = Color(0xFF2E7D32), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                         }
                         order.status == "CANCELLED" -> {
-                            Text("CANCELLED", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                            Text("रद्द किया गया", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
                         }
                         order.paymentStatus == "PENDING" && order.status == "PLACED" -> {
                             Button(onClick = onPay) {
-                                Text(if (order.paymentMethod.isEmpty()) "Pay Now" else "Change Payment")
+                                Text(if (order.paymentMethod.isEmpty()) "पैसे भरें" else "पेमेंट बदलें")
                             }
                         }
                         canRequestReturn -> {
                             OutlinedButton(onClick = onRequestReturn) {
-                                Text("Request Return")
+                                Text("वापस करें")
                             }
                         }
                         else -> {
-                            val paymentText = if (order.paymentStatus == "PAID") "PAID" else "PAYMENT: ${order.paymentStatus}"
+                            val paymentText = if (order.paymentStatus == "PAID") "पैसे मिल गए" else "पेमेंट: ${order.paymentStatus}"
                             val paymentColor = if (order.paymentStatus == "PAID") Color(0xFF2E7D32) else Color(0xFFE65100)
                             Text(paymentText, color = paymentColor, fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.labelLarge)
                         }
@@ -324,11 +327,11 @@ fun PartialReturnDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Return Items") },
+        title = { Text("सामान वापस करें") },
         text = {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 item {
-                    Text("Select items and quantities you wish to return.", style = MaterialTheme.typography.bodyMedium)
+                    Text("जो सामान वापस करना है उसकी मात्रा (Qty) चुनें।", style = MaterialTheme.typography.bodyMedium)
                 }
                 
                 items(returnableItems) { item ->
@@ -339,7 +342,7 @@ fun PartialReturnDialog(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(text = item.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                            Text(text = "Purchased: ${item.qty}", style = MaterialTheme.typography.labelSmall)
+                            Text(text = "खरीदा हुआ: ${item.qty}", style = MaterialTheme.typography.labelSmall)
                         }
                         
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -377,7 +380,7 @@ fun PartialReturnDialog(
                     OutlinedTextField(
                         value = reason,
                         onValueChange = { reason = it },
-                        label = { Text("Reason for Return (Optional)") },
+                        label = { Text("वापसी का कारण (जरूरी नहीं)") },
                         modifier = Modifier.fillMaxWidth(),
                         minLines = 2
                     )
@@ -403,11 +406,11 @@ fun PartialReturnDialog(
                 },
                 enabled = totalToReturn > 0
             ) {
-                Text("Submit Request")
+                Text("गुज़ारिश भेजें")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text("रद्द करें") }
         }
     )
 }
@@ -423,31 +426,31 @@ fun PaymentMethodDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Choose Payment Method") },
+        title = { Text("पेमेंट का तरीका चुनें") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text("Total Amount: ₹${order.totalAmount}", fontWeight = FontWeight.Bold)
+                Text("कुल रकम: ₹${order.totalAmount}", fontWeight = FontWeight.Bold)
                 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(selected = selectedMethod == "COD", onClick = { selectedMethod = "COD" })
-                    Text("Cash on Delivery")
+                    Text("डिलीवरी पर नकद (Cash on Delivery)")
                 }
                 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(selected = selectedMethod == "UPI", onClick = { selectedMethod = "UPI" })
-                    Text("UPI (QR Code)")
+                    Text("UPI (QR कोड)")
                 }
 
                 if (selectedMethod == "UPI") {
                     if (qrUrl.isNotEmpty()) {
                         AsyncImage(
                             model = getDirectImageUrl(qrUrl),
-                            contentDescription = "UPI QR Code",
+                            contentDescription = "UPI QR कोड",
                             modifier = Modifier.fillMaxWidth().aspectRatio(1f),
                             contentScale = ContentScale.Fit
                         )
                     } else {
-                        Text("QR Code not available. Please contact admin.", color = MaterialTheme.colorScheme.error)
+                        Text("QR कोड अभी उपलब्ध नहीं है। कृपया दुकानदार से बात करें।", color = MaterialTheme.colorScheme.error)
                     }
                 }
             }
@@ -457,11 +460,11 @@ fun PaymentMethodDialog(
                 onClick = { onSelect(selectedMethod) },
                 enabled = selectedMethod.isNotEmpty()
             ) {
-                Text("Confirm")
+                Text("पक्का करें")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text("रद्द करें") }
         }
     )
 }
@@ -504,7 +507,13 @@ private fun StatusBadge(status: String) {
         shape = MaterialTheme.shapes.small
     ) {
         val text = when(status) {
-            "PARTIAL_RETURNED" -> "PARTIAL RETURNED"
+            "PLACED" -> "ऑर्डर मिला"
+            "DELIVERED" -> "मिल गया"
+            "RETURN_REQUESTED" -> "वापसी की गुज़ारिश"
+            "RETURNED" -> "वापस हो गया"
+            "PARTIAL_RETURNED" -> "कुछ सामान वापस"
+            "CANCELLED" -> "रद्द हुआ"
+            "RETURN_REJECTED" -> "वापसी रद्द"
             else -> status.replace("_", " ")
         }
         Text(

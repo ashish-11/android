@@ -65,7 +65,7 @@ class ProductViewModel : ViewModel() {
                     imageUrl = urls.firstOrNull() ?: product.imageUrl
                 )
                 val result = repo.addProduct(newProduct)
-                if (result.isSuccess) loadAllProductsForAdmin()
+                if (result.isSuccess) loadProducts()
                 onDone(result.isSuccess)
             } catch (e: Exception) {
                 onDone(false)
@@ -84,7 +84,7 @@ class ProductViewModel : ViewModel() {
                     imageUrl = totalUrls.firstOrNull() ?: product.imageUrl
                 )
                 val result = repo.updateProduct(updatedProduct)
-                if (result.isSuccess) loadAllProductsForAdmin()
+                if (result.isSuccess) loadProducts()
                 onDone(result.isSuccess)
             } catch (e: Exception) {
                 onDone(false)
@@ -106,7 +106,7 @@ class ProductViewModel : ViewModel() {
     fun deleteProduct(productId: String, onDone: (Boolean) -> Unit) {
         viewModelScope.launch {
             val result = repo.deleteProduct(productId)
-            if (result.isSuccess) loadAllProductsForAdmin()
+            if (result.isSuccess) loadProducts()
             onDone(result.isSuccess)
         }
     }

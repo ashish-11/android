@@ -39,10 +39,13 @@ fun LoginScreen(
 
     val uiState = vm.uiState
 
-    // Handle successful login
+    // Handle successful login or registration
     LaunchedEffect(uiState) {
         if (uiState is AuthUiState.LoggedIn) {
             onSuccess(uiState.uid, uiState.role)
+        } else if (uiState is AuthUiState.Registered) {
+            isRegister = false
+            // We keep the Registered state for a moment to show the success message in the login view
         }
     }
 
@@ -67,16 +70,17 @@ fun LoginScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = if (isRegister) "Create Account" else "Welcome Back",
+                    text = if (isRegister) "नया खाता बनाएँ" else "आपका स्वागत है",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
                 
                 Text(
-                    text = if (isRegister) "Sign up to start shopping" else "Login to continue shopping",
+                    text = if (isRegister) "खरीददारी शुरू करने के लिए रजिस्टर करें" else "आगे बढ़ने के लिए लॉग इन करें",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -99,11 +103,28 @@ fun LoginScreen(
                     }
                 }
 
+                // Success Message Display (for Registration)
+                AnimatedVisibility(visible = uiState is AuthUiState.Registered && !isRegister) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                        color = Color(0xFFE8F5E9),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = "रजिस्ट्रेशन सफल रहा! एडमिन द्वारा अप्रूव होने के बाद लॉग इन करें।",
+                            color = Color(0xFF2E7D32),
+                            modifier = Modifier.padding(12.dp),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
                 if (isRegister) {
                     OutlinedTextField(
                         value = name,
                         onValueChange = { name = it },
-                        label = { Text("Full Name") },
+                        label = { Text("पूरा नाम (Full Name)") },
                         modifier = Modifier.fillMaxWidth(),
                         leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
                         shape = RoundedCornerShape(12.dp)
@@ -113,7 +134,7 @@ fun LoginScreen(
                     OutlinedTextField(
                         value = mobile,
                         onValueChange = { mobile = it },
-                        label = { Text("Mobile Number") },
+                        label = { Text("मोबाइल नंबर (Mobile)") },
                         modifier = Modifier.fillMaxWidth(),
                         leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) },
                         shape = RoundedCornerShape(12.dp)
@@ -124,7 +145,7 @@ fun LoginScreen(
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
-                    label = { Text("Email Address") },
+                    label = { Text("ईमेल (Email Address)") },
                     modifier = Modifier.fillMaxWidth(),
                     leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
                     shape = RoundedCornerShape(12.dp)
@@ -136,7 +157,7 @@ fun LoginScreen(
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
-                        label = { Text("Password") },
+                        label = { Text("पासवर्ड (Password)") },
                         modifier = Modifier.fillMaxWidth(),
                         leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
                         visualTransformation = PasswordVisualTransformation(),
@@ -145,14 +166,14 @@ fun LoginScreen(
                     
                     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
                         TextButton(onClick = { showForgotDialog = true }) {
-                            Text("Forgot Password?", style = MaterialTheme.typography.bodySmall)
+                            Text("पासवर्ड भूल गए?", style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 } else {
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
-                        label = { Text("Create Password") },
+                        label = { Text("नया पासवर्ड बनाएँ") },
                         modifier = Modifier.fillMaxWidth(),
                         leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
                         visualTransformation = PasswordVisualTransformation(),
@@ -176,7 +197,7 @@ fun LoginScreen(
                     if (uiState is AuthUiState.Loading) {
                         CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
                     } else {
-                        Text(if (isRegister) "Register" else "Login", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Text(if (isRegister) "रजिस्टर करें" else "लॉग इन", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     }
                 }
 
@@ -184,12 +205,13 @@ fun LoginScreen(
 
                 TextButton(onClick = { 
                     isRegister = !isRegister
+                    vm.clearState()
                 }) {
                     Text(
                         if (isRegister)
-                            "Already have an account? Login"
+                            "पहले से खाता है? लॉग इन करें"
                         else
-                            "New user? Create an Account",
+                            "नए ग्राहक? नया खाता बनाएँ",
                         color = MaterialTheme.colorScheme.secondary
                     )
                 }
@@ -201,15 +223,15 @@ fun LoginScreen(
         var resetEmail by remember { mutableStateOf(email) }
         AlertDialog(
             onDismissRequest = { showForgotDialog = false },
-            title = { Text("Reset Password") },
+            title = { Text("पासवर्ड बदलें") },
             text = {
                 Column {
-                    Text("We will send a password reset link to your email address.")
+                    Text("हम आपके ईमेल पर पासवर्ड बदलने के लिए एक लिंक भेजेंगे।")
                     Spacer(modifier = Modifier.height(16.dp))
                     OutlinedTextField(
                         value = resetEmail,
                         onValueChange = { resetEmail = it },
-                        label = { Text("Email Address") },
+                        label = { Text("ईमेल (Email Address)") },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -219,12 +241,12 @@ fun LoginScreen(
                     vm.resetPassword(resetEmail)
                     showForgotDialog = false
                 }) {
-                    Text("Send Email")
+                    Text("लिंक भेजें")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showForgotDialog = false }) {
-                    Text("Cancel")
+                    Text("रद्द करें")
                 }
             }
         )

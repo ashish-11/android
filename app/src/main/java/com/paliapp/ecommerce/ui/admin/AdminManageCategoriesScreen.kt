@@ -52,10 +52,10 @@ fun AdminManageCategoriesScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Manage Categories") },
+                title = { Text("कैटेगरी मैनेजमेंट") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "पीछे")
                     }
                 }
             )
@@ -66,13 +66,13 @@ fun AdminManageCategoriesScreen(
                 selectedImageUri = null
                 showAddDialog = true 
             }) {
-                Icon(Icons.Default.Add, contentDescription = "Add Category")
+                Icon(Icons.Default.Add, contentDescription = "कैटेगरी जोड़ें")
             }
         }
     ) { padding ->
         if (categories.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text("No categories found. Tap + to add.")
+                Text("कोई कैटेगरी नहीं मिली। + बटन दबाकर जोड़ें।")
             }
         } else {
             LazyColumn(
@@ -114,14 +114,14 @@ fun AdminManageCategoriesScreen(
                                 }) {
                                     Icon(
                                         Icons.Default.Edit,
-                                        contentDescription = "Edit",
+                                        contentDescription = "बदलें",
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                 }
                                 IconButton(onClick = { categoryToDelete = category }) {
                                     Icon(
                                         Icons.Default.Delete,
-                                        contentDescription = "Delete",
+                                        contentDescription = "हटाएं",
                                         tint = MaterialTheme.colorScheme.error
                                     )
                                 }
@@ -135,7 +135,7 @@ fun AdminManageCategoriesScreen(
 
     if (showAddDialog) {
         CategoryDialog(
-            title = "Add New Category",
+            title = "नई कैटेगरी जोड़ें",
             name = inputName,
             onNameChange = { inputName = it },
             imageUri = selectedImageUri,
@@ -146,7 +146,7 @@ fun AdminManageCategoriesScreen(
                     if (success) {
                         showAddDialog = false
                     } else {
-                        Toast.makeText(context, "Failed to add category", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "कैटेगरी जोड़ने में विफल", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -155,7 +155,7 @@ fun AdminManageCategoriesScreen(
 
     if (categoryToEdit != null) {
         CategoryDialog(
-            title = "Edit Category",
+            title = "कैटेगरी बदलें",
             name = inputName,
             onNameChange = { inputName = it },
             imageUri = selectedImageUri,
@@ -167,7 +167,7 @@ fun AdminManageCategoriesScreen(
                     if (success) {
                         categoryToEdit = null
                     } else {
-                        Toast.makeText(context, "Failed to update category", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "अपडेट करने में विफल", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -178,8 +178,8 @@ fun AdminManageCategoriesScreen(
         var isDeleting by remember { mutableStateOf(false) }
         AlertDialog(
             onDismissRequest = { if (!isDeleting) categoryToDelete = null },
-            title = { Text("Delete Category") },
-            text = { Text("Are you sure? Products in this category will lose their category link.") },
+            title = { Text("कैटेगरी हटाएं") },
+            text = { Text("क्या आप सच में हटाना चाहते हैं? इस कैटेगरी के सामान की लिंक हट जाएगी।") },
             confirmButton = {
                 Button(
                     onClick = {
@@ -189,7 +189,7 @@ fun AdminManageCategoriesScreen(
                             if (success) {
                                 categoryToDelete = null
                             } else {
-                                Toast.makeText(context, "Failed to delete", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "हटाने में विफल", Toast.LENGTH_SHORT).show()
                             }
                         }
                     },
@@ -197,11 +197,11 @@ fun AdminManageCategoriesScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) { 
                     if (isDeleting) CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White)
-                    else Text("Delete")
+                    else Text("हटाएं")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { categoryToDelete = null }, enabled = !isDeleting) { Text("Cancel") }
+                TextButton(onClick = { categoryToDelete = null }, enabled = !isDeleting) { Text("रद्द करें") }
             }
         )
     }
@@ -257,12 +257,12 @@ fun CategoryDialog(
                         Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(40.dp))
                     }
                 }
-                Text("Tap to select icon", style = MaterialTheme.typography.labelSmall)
+                Text("आइकन चुनने के लिए टच करें", style = MaterialTheme.typography.labelSmall)
                 
                 OutlinedTextField(
                     value = name,
                     onValueChange = onNameChange,
-                    label = { Text("Category Name") },
+                    label = { Text("कैटेगरी का नाम") },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !isLoading,
                     singleLine = true
@@ -278,11 +278,11 @@ fun CategoryDialog(
                 enabled = !isLoading && name.isNotBlank()
             ) { 
                 if (isLoading) CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White)
-                else Text("Save") 
+                else Text("सुरक्षित करें") 
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isLoading) { Text("Cancel") }
+            TextButton(onClick = onDismiss, enabled = !isLoading) { Text("रद्द करें") }
         }
     )
 }

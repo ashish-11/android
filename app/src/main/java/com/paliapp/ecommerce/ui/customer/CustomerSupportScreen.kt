@@ -29,10 +29,10 @@ fun CustomerSupportScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Customer Support") },
+                title = { Text("सहायता केंद्र") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "पीछे")
                     }
                 }
             )
@@ -56,9 +56,10 @@ fun CustomerSupportScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel(
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "How can we help you?",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
+                text = "हम आपकी क्या मदद कर सकते हैं?",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -75,7 +76,7 @@ fun CustomerSupportScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = if (message.isNotEmpty()) message else "You can contact us for registration approval, payment queries, or delivery requests.",
+                        text = if (message.isNotEmpty()) message else "पंजीकरण (registration) की मंजूरी, पेमेंट की पूछताछ, या डिलीवरी के लिए आप हमसे संपर्क कर सकते हैं।",
                         style = MaterialTheme.typography.bodyLarge,
                         textAlign = TextAlign.Center,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -94,7 +95,7 @@ fun CustomerSupportScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel(
                         ) {
                             Icon(Icons.Default.Call, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Call Admin: $contact")
+                            Text("कॉल करें: $contact")
                         }
                     }
                 }
@@ -103,7 +104,7 @@ fun CustomerSupportScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel(
             Spacer(modifier = Modifier.height(32.dp))
             
             Text(
-                text = "Operational Hours: 10 AM - 8 PM",
+                text = "कामकाज का समय: सुबह 10 बजे से रात 8 बजे तक",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.outline
             )

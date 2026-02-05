@@ -64,7 +64,7 @@ fun AdminUserApprovalScreen(
                         OutlinedTextField(
                             value = searchQuery,
                             onValueChange = { searchQuery = it },
-                            placeholder = { Text("Search users...") },
+                            placeholder = { Text("ग्राहक खोजें...") },
                             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                             singleLine = true,
                             shape = RoundedCornerShape(12.dp),
@@ -73,7 +73,7 @@ fun AdminUserApprovalScreen(
                                     searchQuery = ""
                                     isSearching = false 
                                 }) {
-                                    Icon(Icons.Default.Close, contentDescription = "Close")
+                                    Icon(Icons.Default.Close, contentDescription = "बंद करें")
                                 }
                             }
                         )
@@ -81,21 +81,21 @@ fun AdminUserApprovalScreen(
                 )
             } else {
                 TopAppBar(
-                    title = { Text("User Management") },
+                    title = { Text("ग्राहक मैनेजमेंट") },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "पीछे")
                         }
                     },
                     actions = {
                         IconButton(onClick = { isSearching = true }) {
-                            Icon(Icons.Default.Search, contentDescription = "Search")
+                            Icon(Icons.Default.Search, contentDescription = "खोजें")
                         }
                         IconButton(onClick = { 
                             authVm.loadPendingUsers()
                             authVm.loadAllCustomers()
                         }) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                            Icon(Icons.Default.Refresh, contentDescription = "अपडेट")
                         }
                     }
                 )
@@ -107,12 +107,12 @@ fun AdminUserApprovalScreen(
                 Tab(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
-                    text = { Text("Pending (${pendingUsers.size})") }
+                    text = { Text("पेंडिंग (${pendingUsers.size})") }
                 )
                 Tab(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    text = { Text("Existing (${allCustomers.size})") }
+                    text = { Text("जुड़े हुए (${allCustomers.size})") }
                 )
             }
 
@@ -120,7 +120,7 @@ fun AdminUserApprovalScreen(
 
             if (listToShow.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(if (searchQuery.isEmpty()) "No users found" else "No results for '$searchQuery'")
+                    Text(if (searchQuery.isEmpty()) "कोई ग्राहक नहीं मिला" else "'$searchQuery' के लिए कोई नतीजा नहीं मिला")
                 }
             } else {
                 LazyColumn(
@@ -166,7 +166,7 @@ fun UserApprovalCard(user: User, onApprove: () -> Unit, onReject: () -> Unit) {
                 ) {
                     Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Reject")
+                    Text("अस्वीकार (Reject)")
                 }
                 
                 Spacer(modifier = Modifier.width(8.dp))
@@ -177,7 +177,7 @@ fun UserApprovalCard(user: User, onApprove: () -> Unit, onReject: () -> Unit) {
                 ) {
                     Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Approve")
+                    Text("मंजूर करें (Approve)")
                 }
             }
         }
@@ -200,7 +200,7 @@ fun ExistingUserCard(user: User, onDelete: () -> Unit) {
                 UserBasicInfo(user)
             }
             IconButton(onClick = { showConfirm = true }) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                Icon(Icons.Default.Delete, contentDescription = "हटाएं", tint = MaterialTheme.colorScheme.error)
             }
         }
     }
@@ -208,13 +208,13 @@ fun ExistingUserCard(user: User, onDelete: () -> Unit) {
     if (showConfirm) {
         AlertDialog(
             onDismissRequest = { showConfirm = false },
-            title = { Text("Delete Customer") },
+            title = { Text("ग्राहक हटाएं") },
             text = { 
                 Column {
-                    Text("Delete ${user.name} from the database?")
+                    Text("क्या आप ${user.name} को डेटाबेस से हटाना चाहते हैं?")
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "Note: To allow this user to register again with the same email, you must also delete their account manually from the Firebase Console > Authentication tab.",
+                        "नोट: अगर यह यूजर फिर से उसी ईमेल से रजिस्टर करना चाहे, तो आपको Firebase Authentication से भी इनका अकाउंट हटाना होगा।",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -225,11 +225,11 @@ fun ExistingUserCard(user: User, onDelete: () -> Unit) {
                     onDelete()
                     showConfirm = false
                 }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
-                    Text("Delete Profile")
+                    Text("हाँ, हटाएं")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showConfirm = false }) { Text("Cancel") }
+                TextButton(onClick = { showConfirm = false }) { Text("रद्द करें") }
             }
         )
     }

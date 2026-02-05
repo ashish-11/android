@@ -23,7 +23,6 @@ fun ProfileScreen(
 ) {
     val userDetails = authVm.currentUserDetails
     
-    // Initialize state with whatever is currently in userDetails
     var name by remember(userDetails) { mutableStateOf(userDetails?.name ?: "") }
     var mobile by remember(userDetails) { mutableStateOf(userDetails?.mobile ?: "") }
     var address by remember(userDetails) { mutableStateOf(userDetails?.address ?: "") }
@@ -33,10 +32,10 @@ fun ProfileScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("My Profile") },
+                title = { Text("मेरी प्रोफाइल") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "पीछे")
                     }
                 }
             )
@@ -59,7 +58,7 @@ fun ProfileScreen(
             )
 
             Text(
-                text = userDetails?.email ?: "No email found",
+                text = userDetails?.email ?: "ईमेल नहीं मिला",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -67,7 +66,7 @@ fun ProfileScreen(
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Full Name") },
+                label = { Text("पूरा नाम") },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             )
@@ -75,7 +74,7 @@ fun ProfileScreen(
             OutlinedTextField(
                 value = mobile,
                 onValueChange = { mobile = it },
-                label = { Text("Mobile Number") },
+                label = { Text("मोबाइल नंबर") },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             )
@@ -83,7 +82,7 @@ fun ProfileScreen(
             OutlinedTextField(
                 value = address,
                 onValueChange = { address = it },
-                label = { Text("Delivery Address") },
+                label = { Text("डिलीवरी का पता") },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 3,
                 shape = RoundedCornerShape(12.dp)
@@ -92,7 +91,7 @@ fun ProfileScreen(
             if (message.isNotEmpty()) {
                 Text(
                     text = message,
-                    color = if (message.contains("success", true)) 
+                    color = if (message.contains("सफलतापूर्वक", true)) 
                         MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall
                 )
@@ -105,7 +104,7 @@ fun ProfileScreen(
                     isLoading = true
                     authVm.updateProfile(name, mobile, address) { success ->
                         isLoading = false
-                        message = if (success) "Profile updated successfully!" else "Failed to update profile."
+                        message = if (success) "प्रोफाइल सफलतापूर्वक अपडेट हो गई!" else "प्रोफाइल अपडेट करने में विफल।"
                     }
                 },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -115,7 +114,7 @@ fun ProfileScreen(
                 if (isLoading) {
                     CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(24.dp))
                 } else {
-                    Text("Update Profile")
+                    Text("प्रोफाइल अपडेट करें")
                 }
             }
         }

@@ -41,15 +41,15 @@ fun AdminOrdersScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Pending Orders") },
+                title = { Text("नए ऑर्डर") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "पीछे")
                     }
                 },
                 actions = {
                     IconButton(onClick = { orderVm.loadAllOrders() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        Icon(Icons.Default.Refresh, contentDescription = "अपडेट")
                     }
                 }
             )
@@ -80,31 +80,31 @@ fun AdminDeliveredOrdersScreen(
     if (showDeleteConfirmationDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmationDialog = false },
-            title = { Text("Confirm Deletion") },
-            text = { Text("Are you sure you want to delete ${selectedOrderIds.size} selected order(s)? This action cannot be undone.") },
+            title = { Text("डिलीट करें") },
+            text = { Text("क्या आप सच में ${selectedOrderIds.size} ऑर्डर डिलीट करना चाहते हैं? यह वापस नहीं आएगा।") },
             confirmButton = {
                 Button(
                     onClick = {
                         val ordersToDelete = deliveredOrders.filter { it.id in selectedOrderIds }
                         orderVm.archiveAndDeleteOrders(ordersToDelete) { success ->
                             if (success) {
-                                Toast.makeText(context, "Successfully deleted ${ordersToDelete.size} orders", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "${ordersToDelete.size} ऑर्डर डिलीट हो गए", Toast.LENGTH_SHORT).show()
                                 isSelectionMode = false
                                 selectedOrderIds = emptySet()
                             } else {
-                                Toast.makeText(context, "Failed to delete orders", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "डिलीट करने में विफल", Toast.LENGTH_SHORT).show()
                             }
                         }
                         showDeleteConfirmationDialog = false
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Delete")
+                    Text("डिलीट करें")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirmationDialog = false }) {
-                    Text("Cancel")
+                    Text("रद्द करें")
                 }
             }
         )
@@ -118,7 +118,7 @@ fun AdminDeliveredOrdersScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(if (isSelectionMode) "${selectedOrderIds.size} Selected" else "Delivered Orders")
+                    Text(if (isSelectionMode) "${selectedOrderIds.size} चुने गए" else "डिलीवर हुए ऑर्डर")
                 },
                 navigationIcon = {
                     IconButton(onClick = {
@@ -141,15 +141,15 @@ fun AdminDeliveredOrdersScreen(
                                 deliveredOrders.map { it.id }.toSet()
                             }
                         }) {
-                            Icon(Icons.Default.SelectAll, contentDescription = "Select All")
+                            Icon(Icons.Default.SelectAll, contentDescription = "सब चुनें")
                         }
 
                         IconButton(onClick = { showDeleteConfirmationDialog = true }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete Selected", tint = MaterialTheme.colorScheme.error)
+                            Icon(Icons.Default.Delete, contentDescription = "चुने हुए हटाएं", tint = MaterialTheme.colorScheme.error)
                         }
                     } else {
                         IconButton(onClick = { orderVm.loadAllOrders() }) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                            Icon(Icons.Default.Refresh, contentDescription = "अपडेट")
                         }
                     }
                 }
@@ -200,31 +200,31 @@ fun AdminReturnsScreen(
     if (showDeleteConfirmationDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmationDialog = false },
-            title = { Text("Confirm Deletion") },
-            text = { Text("Are you sure you want to delete and archive ${selectedOrderIds.size} selected returned order(s)?") },
+            title = { Text("डिलीट करें") },
+            text = { Text("क्या आप सच में ${selectedOrderIds.size} वापसी ऑर्डर डिलीट करना चाहते हैं?") },
             confirmButton = {
                 Button(
                     onClick = {
                         val ordersToDelete = returnOrders.filter { it.id in selectedOrderIds }
                         orderVm.archiveAndDeleteOrders(ordersToDelete) { success ->
                             if (success) {
-                                Toast.makeText(context, "Successfully deleted ${ordersToDelete.size} orders", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "${ordersToDelete.size} ऑर्डर डिलीट हो गए", Toast.LENGTH_SHORT).show()
                                 isSelectionMode = false
                                 selectedOrderIds = emptySet()
                             } else {
-                                Toast.makeText(context, "Failed to delete orders", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "डिलीट करने में विफल", Toast.LENGTH_SHORT).show()
                             }
                         }
                         showDeleteConfirmationDialog = false
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Delete")
+                    Text("डिलीट करें")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirmationDialog = false }) {
-                    Text("Cancel")
+                    Text("रद्द करें")
                 }
             }
         )
@@ -238,7 +238,7 @@ fun AdminReturnsScreen(
         topBar = {
             TopAppBar(
                 title = { 
-                    Text(if (isSelectionMode) "${selectedOrderIds.size} Selected" else "Return Requests") 
+                    Text(if (isSelectionMode) "${selectedOrderIds.size} चुने गए" else "वापसी की गुज़ारिश") 
                 },
                 navigationIcon = {
                     IconButton(onClick = {
@@ -261,15 +261,15 @@ fun AdminReturnsScreen(
                                 returnOrders.map { it.id }.toSet()
                             }
                         }) {
-                            Icon(Icons.Default.SelectAll, contentDescription = "Select All")
+                            Icon(Icons.Default.SelectAll, contentDescription = "सब चुनें")
                         }
 
                         IconButton(onClick = { showDeleteConfirmationDialog = true }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete Selected", tint = MaterialTheme.colorScheme.error)
+                            Icon(Icons.Default.Delete, contentDescription = "हटाएं", tint = MaterialTheme.colorScheme.error)
                         }
                     } else {
                         IconButton(onClick = { orderVm.loadAllOrders() }) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                            Icon(Icons.Default.Refresh, contentDescription = "अपडेट")
                         }
                     }
                 }
@@ -320,10 +320,10 @@ private fun OrderList(
     if (orders.isEmpty()) {
         Box(modifier = modifier, contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("No orders found", style = MaterialTheme.typography.bodyLarge)
+                Text("कोई ऑर्डर नहीं मिला", style = MaterialTheme.typography.bodyLarge)
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(onClick = { orderVm.loadAllOrders() }) {
-                    Text("Refresh")
+                    Text("अपडेट करें")
                 }
             }
         }
@@ -377,24 +377,24 @@ private fun OrderCard(
     if (showSingleDeleteConfirmationDialog) {
         AlertDialog(
             onDismissRequest = { showSingleDeleteConfirmationDialog = false },
-            title = { Text("Confirm Deletion") },
-            text = { Text("Are you sure you want to delete this order? This action will move it to archives.") },
+            title = { Text("डिलीट करें") },
+            text = { Text("क्या आप इस ऑर्डर को डिलीट करना चाहते हैं? यह आर्काइव में चला जाएगा।") },
             confirmButton = {
                 Button(
                     onClick = {
                         orderVm.archiveAndDeleteOrders(listOf(order)) { success ->
-                            if (success) Toast.makeText(context, "Order archived", Toast.LENGTH_SHORT).show()
+                            if (success) Toast.makeText(context, "ऑर्डर आर्काइव हुआ", Toast.LENGTH_SHORT).show()
                         }
                         showSingleDeleteConfirmationDialog = false
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Delete")
+                    Text("डिलीट करें")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showSingleDeleteConfirmationDialog = false }) {
-                    Text("Cancel")
+                    Text("रद्द करें")
                 }
             }
         )
@@ -434,7 +434,7 @@ private fun OrderCard(
                     }
                     Column {
                         Text(
-                            text = "Order ID: ${order.id.takeLast(6)}",
+                            text = "आर्डर नंबर: ${order.id.takeLast(6)}",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -448,11 +448,11 @@ private fun OrderCard(
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { BillGenerator.downloadBill(context, order) }) {
-                        Icon(Icons.Default.Download, contentDescription = "Download Bill")
+                        Icon(Icons.Default.Download, contentDescription = "बिल डाउनलोड")
                     }
                     if ((isDelivered || (isReturn && order.status == "RETURNED")) && !isSelectionMode) {
                         IconButton(onClick = { showSingleDeleteConfirmationDialog = true }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Archive Order", tint = MaterialTheme.colorScheme.error)
+                            Icon(Icons.Default.Delete, contentDescription = "आर्काइव करें", tint = MaterialTheme.colorScheme.error)
                         }
                     } else if (!isDelivered && !isReturn) {
                         StatusBadge(status = order.status)
@@ -469,12 +469,12 @@ private fun OrderCard(
                     colors = CardDefaults.cardColors(containerColor = Color(0xFFFBE9E7).copy(alpha = 0.5f))
                 ) {
                     Column(modifier = Modifier.padding(8.dp)) {
-                        Text(text = "Customer Reason:", style = MaterialTheme.typography.labelMedium, color = Color(0xFFD84315), fontWeight = FontWeight.Bold)
-                        Text(text = order.returnReason.ifEmpty { "No reason provided" }, style = MaterialTheme.typography.bodyMedium)
+                        Text(text = "ग्राहक का कारण:", style = MaterialTheme.typography.labelMedium, color = Color(0xFFD84315), fontWeight = FontWeight.Bold)
+                        Text(text = order.returnReason.ifEmpty { "कोई कारण नहीं दिया" }, style = MaterialTheme.typography.bodyMedium)
                         
                         if (order.returnAdminNote.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text(text = "Admin Note:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                            Text(text = "एडमिन नोट:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                             Text(text = order.returnAdminNote, style = MaterialTheme.typography.bodySmall)
                         }
                     }
@@ -483,7 +483,6 @@ private fun OrderCard(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 
-            // Delivery Date Section
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -491,34 +490,33 @@ private fun OrderCard(
             ) {
                 Column {
                     Text(
-                        text = "Delivery Date:",
+                        text = "डिलीवरी की तारीख:",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.secondary
                     )
                     Text(
-                        text = order.deliveryDate.ifEmpty { "Not set" },
+                        text = order.deliveryDate.ifEmpty { "सेट नहीं है" },
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold
                     )
                 }
                 if (!isDelivered && !isReturn && order.status != "CANCELLED") {
                     IconButton(onClick = { showDateDialog = true }) {
-                        Icon(Icons.Default.EditCalendar, contentDescription = "Set Date")
+                        Icon(Icons.Default.EditCalendar, contentDescription = "तारीख चुनें")
                     }
                 }
             }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 
-            // Customer Details
-            Text(text = "Customer Details:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
+            Text(text = "ग्राहक की जानकारी:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
             Text(text = order.userName.ifEmpty { "N/A" }, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
             Text(text = order.userMobile.ifEmpty { "N/A" }, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(text = order.address.ifEmpty { "No address" }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(text = order.address.ifEmpty { "पता नहीं दिया" }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 
-            Text(text = "Items:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
+            Text(text = "सामान:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
             
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 order.items.forEach { item ->
@@ -541,7 +539,7 @@ private fun OrderCard(
                                     fontWeight = if (isPartOfReturn) FontWeight.Bold else FontWeight.Normal
                                 )
                                 Text(
-                                    text = if (isPartOfReturn) "Returning ${item.returnQty} of ${item.qty}" else "Purchased: ${item.qty}",
+                                    text = if (isPartOfReturn) "वापसी: ${item.returnQty} / ${item.qty}" else "खरीदा: ${item.qty}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = if (isPartOfReturn) Color(0xFFD84315) else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -555,20 +553,24 @@ private fun OrderCard(
                                 )
                                 if (!item.isReturnable) {
                                     Text(
-                                        text = "NON-RETURNABLE",
+                                        text = "वापस नहीं होगा",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = Color.Gray,
                                         fontWeight = FontWeight.Bold
                                     )
                                 } else if (isReturn && !isPartOfReturn) {
+                                    val statusHindi = when(item.status) {
+                                        "DELIVERED" -> "पहुंच गया"
+                                        else -> item.status.replace("_", " ")
+                                    }
                                     Text(
-                                        text = item.status.replace("_", " "),
+                                        text = statusHindi,
                                         style = MaterialTheme.typography.labelSmall,
                                         color = Color.Gray
                                     )
                                 } else if (item.status == "RETURN_REJECTED") {
                                     Text(
-                                        text = "RETURN REJECTED",
+                                        text = "वापसी अस्वीकार",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = Color.Red,
                                         fontWeight = FontWeight.Bold
@@ -583,7 +585,7 @@ private fun OrderCard(
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(text = "Order Value", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(text = "कुल रकम", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text(text = "₹${order.totalAmount}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
             }
 
@@ -602,7 +604,7 @@ private fun OrderCard(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = "Refund Due:",
+                                text = "वापसी रकम (Refund):",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFFD84315)
@@ -627,13 +629,13 @@ private fun OrderCard(
                                 modifier = Modifier.weight(1f),
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                             ) {
-                                Text("Examine & Approve")
+                                Text("जांचें और मंजूर करें")
                             }
                             OutlinedButton(
                                 onClick = { showRejectDialog = true },
                                 modifier = Modifier.weight(0.6f)
                             ) {
-                                Text("Reject")
+                                Text("मना करें")
                             }
                         }
                     }
@@ -645,7 +647,7 @@ private fun OrderCard(
                         ) {
                             Icon(Icons.Default.Payments, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Mark as Refunded")
+                            Text("पैसे लौटा दिए (Refunded)")
                         }
                     }
                     "REFUNDED" -> {
@@ -654,12 +656,11 @@ private fun OrderCard(
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
                         ) {
-                            Text("Complete Return")
+                            Text("वापसी पूरी करें")
                         }
                     }
                 }
             } else if (order.status == "PLACED") {
-                // Payment Approval Section
                 Surface(
                     color = when (order.paymentStatus) {
                         "PAID" -> Color(0xFFE8F5E9)
@@ -671,8 +672,14 @@ private fun OrderCard(
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
+                            val paymentHindi = when(order.paymentStatus) {
+                                "PAID" -> "पैसे मिल गए"
+                                "AWAITING_APPROVAL" -> "अप्रूवल का इंतज़ार"
+                                "PENDING" -> "बाकी है"
+                                else -> order.paymentStatus
+                            }
                             Text(
-                                text = "Payment Status: ${order.paymentStatus}",
+                                text = "पेमेंट स्टेटस: $paymentHindi",
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = when (order.paymentStatus) {
@@ -698,7 +705,7 @@ private fun OrderCard(
                             ) {
                                 Icon(Icons.Default.Check, contentDescription = null)
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Manual Override: Mark as PAID")
+                                Text("पैसे मिल गए (Mark as PAID)")
                             }
                         }
                     }
@@ -710,7 +717,7 @@ private fun OrderCard(
                     modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
                     shape = MaterialTheme.shapes.medium
                 ) {
-                    Text(if (order.paymentStatus == "PAID") "Mark as Delivered" else "Wait for Payment")
+                    Text(if (order.paymentStatus == "PAID") "डिलीवर हो गया" else "पेमेंट का इंतज़ार करें")
                 }
             }
         }
@@ -719,15 +726,15 @@ private fun OrderCard(
     if (showExamineDialog) {
         AlertDialog(
             onDismissRequest = { showExamineDialog = false },
-            title = { Text("Examine Product") },
+            title = { Text("सामान की जांच") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Verify product condition. Is the return valid?")
+                    Text("क्या सामान वापस लेने लायक है?")
                     OutlinedTextField(
                         value = adminNote,
                         onValueChange = { adminNote = it },
-                        label = { Text("Admin Note (Optional)") },
-                        placeholder = { Text("e.g. Received in good condition.") },
+                        label = { Text("एडमिन नोट (जरूरी नहीं)") },
+                        placeholder = { Text("जैसे: सामान सही हालत में मिला।") },
                         modifier = Modifier.fillMaxWidth(),
                         minLines = 3
                     )
@@ -737,10 +744,10 @@ private fun OrderCard(
                 Button(onClick = {
                     orderVm.approveReturn(order, adminNote)
                     showExamineDialog = false
-                }) { Text("Approve") }
+                }) { Text("मंजूर करें") }
             },
             dismissButton = {
-                TextButton(onClick = { showExamineDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showExamineDialog = false }) { Text("रद्द करें") }
             }
         )
     }
@@ -748,15 +755,15 @@ private fun OrderCard(
     if (showRejectDialog) {
         AlertDialog(
             onDismissRequest = { showRejectDialog = false },
-            title = { Text("Reject Return") },
+            title = { Text("वापसी रद्द करें") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Are you sure you want to reject this return?")
+                    Text("क्या आप सच में यह वापसी रद्द करना चाहते हैं?")
                     OutlinedTextField(
                         value = adminNote,
                         onValueChange = { adminNote = it },
-                        label = { Text("Rejection Reason (Optional)") },
-                        placeholder = { Text("e.g. Item damaged by user.") },
+                        label = { Text("कारण (जरूरी नहीं)") },
+                        placeholder = { Text("जैसे: सामान ग्राहक ने खराब किया है।") },
                         modifier = Modifier.fillMaxWidth(),
                         minLines = 3
                     )
@@ -770,11 +777,11 @@ private fun OrderCard(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Reject Return")
+                    Text("रद्द करें")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showRejectDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showRejectDialog = false }) { Text("वापस") }
             }
         )
     }
@@ -782,12 +789,12 @@ private fun OrderCard(
     if (showDateDialog) {
         AlertDialog(
             onDismissRequest = { showDateDialog = false },
-            title = { Text("Set Delivery Date") },
+            title = { Text("डिलीवरी की तारीख") },
             text = {
                 OutlinedTextField(
                     value = deliveryDateInput,
                     onValueChange = { deliveryDateInput = it },
-                    label = { Text("Expected Delivery Date") },
+                    label = { Text("डिलीवरी कब होगी?") },
                     modifier = Modifier.fillMaxWidth()
                 )
             },
@@ -795,10 +802,10 @@ private fun OrderCard(
                 Button(onClick = {
                     orderVm.updateDeliveryDate(order.id, deliveryDateInput)
                     showDateDialog = false
-                }) { Text("Update") }
+                }) { Text("अपडेट करें") }
             },
             dismissButton = {
-                TextButton(onClick = { showDateDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showDateDialog = false }) { Text("रद्द करें") }
             }
         )
     }
@@ -822,8 +829,19 @@ private fun StatusBadge(status: String) {
         color = bgColor,
         shape = MaterialTheme.shapes.small
     ) {
+        val statusHindi = when(status) {
+            "PLACED" -> "नया ऑर्डर"
+            "DELIVERED" -> "पहुंच गया"
+            "RETURN_REQUESTED" -> "वापसी गुज़ारिश"
+            "RETURN_APPROVED" -> "वापसी मंजूर"
+            "REFUNDED" -> "पैसे लौटाए"
+            "RETURNED" -> "वापस हुआ"
+            "CANCELLED" -> "रद्द हुआ"
+            "RETURN_REJECTED" -> "वापसी रद्द"
+            else -> status.replace("_", " ")
+        }
         Text(
-            text = status.replace("_", " "),
+            text = statusHindi,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
             style = MaterialTheme.typography.labelLarge,
             color = color,

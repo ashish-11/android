@@ -62,7 +62,7 @@ fun AdminManageProductsScreen(
                         OutlinedTextField(
                             value = vm.searchQuery,
                             onValueChange = { vm.searchQuery = it },
-                            placeholder = { Text("Search products...") },
+                            placeholder = { Text("सामान खोजें...") },
                             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                             singleLine = true,
                             shape = RoundedCornerShape(12.dp),
@@ -71,7 +71,7 @@ fun AdminManageProductsScreen(
                                     vm.searchQuery = ""
                                     isSearching = false 
                                 }) {
-                                    Icon(Icons.Default.Close, contentDescription = "Close")
+                                    Icon(Icons.Default.Close, contentDescription = "बंद करें")
                                 }
                             }
                         )
@@ -79,24 +79,24 @@ fun AdminManageProductsScreen(
                 )
             } else {
                 TopAppBar(
-                    title = { Text("Manage Products") },
+                    title = { Text("सामान का मैनेजमेंट") },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.Default.ArrowBack, contentDescription = "पीछे")
                         }
                     },
                     actions = {
                         IconButton(onClick = onManageCategories) {
-                            Icon(Icons.Default.Category, contentDescription = "Manage Categories")
+                            Icon(Icons.Default.Category, contentDescription = "कैटेगरी बदलें")
                         }
                         IconButton(onClick = { isSearching = true }) {
-                            Icon(Icons.Default.Search, contentDescription = "Search")
+                            Icon(Icons.Default.Search, contentDescription = "खोजें")
                         }
                         IconButton(onClick = { 
                             vm.loadAllProductsForAdmin()
                             categoryVm.loadCategories()
                         }) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                            Icon(Icons.Default.Refresh, contentDescription = "अपडेट")
                         }
                     }
                 )
@@ -104,7 +104,7 @@ fun AdminManageProductsScreen(
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Add Product")
+                Icon(Icons.Default.Add, contentDescription = "नया सामान जोड़ें")
             }
         }
     ) { padding ->
@@ -116,14 +116,14 @@ fun AdminManageProductsScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(if (vm.searchQuery.isEmpty()) "No products found" else "No matching products")
+                    Text(if (vm.searchQuery.isEmpty()) "कोई सामान नहीं मिला" else "मैचिंग सामान नहीं मिला")
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(onClick = { 
                         vm.searchQuery = ""
                         vm.loadAllProductsForAdmin() 
                         categoryVm.loadCategories()
                     }) {
-                        Text("Refresh")
+                        Text("अपडेट करें")
                     }
                 }
             }
@@ -150,7 +150,7 @@ fun AdminManageProductsScreen(
 
     if (showAddDialog) {
         EditProductDialog(
-            title = "Add New Product",
+            title = "नया सामान जोड़ें",
             product = Product(),
             onDismiss = { showAddDialog = false },
             onSave = { newProduct, uris ->
@@ -158,7 +158,7 @@ fun AdminManageProductsScreen(
                     if (success) {
                         showAddDialog = false
                     } else {
-                        Toast.makeText(context, "Failed to add product. Check permissions.", Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, "सामान जोड़ने में विफल।", Toast.LENGTH_LONG).show()
                     }
                 }
             },
@@ -168,7 +168,7 @@ fun AdminManageProductsScreen(
 
     if (productToEdit != null) {
         EditProductDialog(
-            title = "Edit Product",
+            title = "सामान अपडेट करें",
             product = productToEdit!!,
             onDismiss = { productToEdit = null },
             onSave = { updatedProduct, uris ->
@@ -176,7 +176,7 @@ fun AdminManageProductsScreen(
                     if (success) {
                         productToEdit = null
                     } else {
-                        Toast.makeText(context, "Failed to update. Check Firebase rules.", Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, "अपडेट करने में विफल।", Toast.LENGTH_LONG).show()
                     }
                 }
             },
@@ -187,8 +187,8 @@ fun AdminManageProductsScreen(
     if (showDeleteDialog != null) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = null },
-            title = { Text("Delete Product") },
-            text = { Text("Are you sure you want to delete '${showDeleteDialog?.name}'?") },
+            title = { Text("सामान हटाएं") },
+            text = { Text("क्या आप सच में '${showDeleteDialog?.name}' को हटाना चाहते हैं?") },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -196,18 +196,18 @@ fun AdminManageProductsScreen(
                             if (success) {
                                 showDeleteDialog = null
                             } else {
-                                Toast.makeText(context, "Failed to delete product.", Toast.LENGTH_LONG).show()
+                                Toast.makeText(context, "हटाने में विफल।", Toast.LENGTH_LONG).show()
                             }
                         }
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Delete")
+                    Text("हटाएं")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = null }) {
-                    Text("Cancel")
+                    Text("रद्द करें")
                 }
             }
         )
@@ -238,11 +238,11 @@ fun ProductManageCard(
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = product.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(text = "Category: $categoryName", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
-                Text(text = "Price: ₹${product.price} / ${product.unit}", style = MaterialTheme.typography.bodyMedium)
+                Text(text = "कैटेगरी: $categoryName", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                Text(text = "दाम: ₹${product.price} / ${product.unit}", style = MaterialTheme.typography.bodyMedium)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "Stock: ${product.stock}", 
+                        text = "स्टॉक: ${product.stock}", 
                         style = MaterialTheme.typography.bodySmall,
                         color = if (product.stock < 10) MaterialTheme.colorScheme.error else Color.Unspecified
                     )
@@ -253,7 +253,7 @@ fun ProductManageCard(
                             shape = RoundedCornerShape(4.dp)
                         ) {
                             Text(
-                                text = "Return: ${product.returnWindowDays}d",
+                                text = "वापसी: ${product.returnWindowDays} दिन",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Color(0xFF2E7D32),
                                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
@@ -261,7 +261,7 @@ fun ProductManageCard(
                         }
                     } else {
                         Text(
-                            text = "Non-returnable",
+                            text = "वापसी संभव नहीं",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.error
                         )
@@ -269,10 +269,10 @@ fun ProductManageCard(
                 }
             }
             IconButton(onClick = onEdit) {
-                Icon(Icons.Default.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.Default.Edit, contentDescription = "बदलें", tint = MaterialTheme.colorScheme.primary)
             }
             IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                Icon(Icons.Default.Delete, contentDescription = "हटाएं", tint = MaterialTheme.colorScheme.error)
             }
         }
     }
@@ -315,7 +315,7 @@ fun EditProductDialog(
         text = {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 item {
-                    Text("Product Images (Max 5)", style = MaterialTheme.typography.titleSmall)
+                    Text("सामान की फोटो (अधिकतम 5)", style = MaterialTheme.typography.titleSmall)
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -345,7 +345,7 @@ fun EditProductDialog(
                                     modifier = Modifier.size(24.dp).align(Alignment.TopEnd).background(Color.White, CircleShape),
                                     enabled = !isLoading
                                 ) {
-                                    Icon(Icons.Default.Close, contentDescription = "Remove", modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Default.Close, contentDescription = "हटाएं", modifier = Modifier.size(16.dp))
                                 }
                             }
                         }
@@ -362,7 +362,7 @@ fun EditProductDialog(
                     }
                 }
                 
-                item { OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, modifier = Modifier.fillMaxWidth(), enabled = !isLoading) }
+                item { OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("नाम") }, modifier = Modifier.fillMaxWidth(), enabled = !isLoading) }
                 
                 item {
                     ExposedDropdownMenuBox(
@@ -374,7 +374,7 @@ fun EditProductDialog(
                             value = selectedCategoryName,
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("Category") },
+                            label = { Text("कैटेगरी") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                             modifier = Modifier.menuAnchor().fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
@@ -399,12 +399,12 @@ fun EditProductDialog(
 
                 item {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedTextField(value = price, onValueChange = { price = it }, label = { Text("Price") }, modifier = Modifier.weight(1f), enabled = !isLoading, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
-                        OutlinedTextField(value = unit, onValueChange = { unit = it }, label = { Text("Unit") }, modifier = Modifier.weight(1f), enabled = !isLoading)
+                        OutlinedTextField(value = price, onValueChange = { price = it }, label = { Text("दाम") }, modifier = Modifier.weight(1f), enabled = !isLoading, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+                        OutlinedTextField(value = unit, onValueChange = { unit = it }, label = { Text("इकाई (जैसे kg)") }, modifier = Modifier.weight(1f), enabled = !isLoading)
                     }
                 }
                 
-                item { OutlinedTextField(value = stock, onValueChange = { stock = it }, label = { Text("Stock") }, modifier = Modifier.fillMaxWidth(), enabled = !isLoading, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)) }
+                item { OutlinedTextField(value = stock, onValueChange = { stock = it }, label = { Text("स्टॉक") }, modifier = Modifier.fillMaxWidth(), enabled = !isLoading, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)) }
                 
                 item {
                     Card(
@@ -414,13 +414,13 @@ fun EditProductDialog(
                         Column(modifier = Modifier.padding(8.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Checkbox(checked = isReturnable, onCheckedChange = { isReturnable = it }, enabled = !isLoading)
-                                Text("Allow Returns", style = MaterialTheme.typography.bodyMedium)
+                                Text("वापसी संभव है", style = MaterialTheme.typography.bodyMedium)
                             }
                             if (isReturnable) {
                                 OutlinedTextField(
                                     value = returnWindowDays,
                                     onValueChange = { returnWindowDays = it },
-                                    label = { Text("Return Window (Days)") },
+                                    label = { Text("कितने दिन में वापसी?") },
                                     modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
                                     enabled = !isLoading,
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -434,7 +434,7 @@ fun EditProductDialog(
                 item {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(checked = active, onCheckedChange = { active = it }, enabled = !isLoading)
-                        Text("Active (Visible to Customers)")
+                        Text("सक्रिय (ग्राहकों को दिखेगा)")
                     }
                 }
             }
@@ -456,12 +456,12 @@ fun EditProductDialog(
                 },
                 enabled = !isLoading && name.isNotBlank()
             ) {
-                if (isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White) else Text("Save")
+                if (isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White) else Text("सुरक्षित करें")
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss, enabled = !isLoading) {
-                Text("Cancel")
+                Text("रद्द करें")
             }
         }
     )

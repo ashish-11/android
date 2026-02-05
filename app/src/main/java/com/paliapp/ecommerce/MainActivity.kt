@@ -19,7 +19,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.paliapp.ecommerce.ui.SplashScreen
 import com.paliapp.ecommerce.ui.admin.AdminHomeScreen
 import com.paliapp.ecommerce.ui.customer.CustomerHomeScreen
 import com.paliapp.ecommerce.ui.auth.LoginScreen
@@ -47,31 +46,28 @@ class MainActivity : ComponentActivity() {
             WholeSaleShopTheme {
                 val navController = rememberNavController()
                 val authViewModel: AuthViewModel = viewModel()
-                var showSplash by remember { mutableStateOf(true) }
-                var startDestination by remember { mutableStateOf("login") }
-                var isCheckingSession by remember { mutableStateOf(true) }
+                var startDestination by remember { mutableStateOf<String?>(null) }
 
                 LaunchedEffect(Unit) {
                     try {
                         authViewModel.checkSession { role ->
-                            if (role != null) {
-                                startDestination = if (role == "ADMIN") "admin" else "customer"
+                            startDestination = if (role != null) {
+                                if (role == "ADMIN") "admin" else "customer"
+                            } else {
+                                "login"
                             }
-                            isCheckingSession = false
                         }
                     } catch (e: Exception) {
                         Log.e("MainActivity", "Error checking session", e)
-                        isCheckingSession = false
+                        startDestination = "login"
                     }
                 }
 
-                if (showSplash || isCheckingSession) {
-                    SplashScreen(onFinished = { showSplash = false })
-                } else {
+                if (startDestination != null) {
                     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                         NavHost(
                             navController = navController,
-                            startDestination = startDestination,
+                            startDestination = startDestination!!,
                             modifier = Modifier.padding(innerPadding)
                         ) {
 

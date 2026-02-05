@@ -53,6 +53,18 @@ class CartViewModel : ViewModel() {
         }
     }
 
+    fun updateQuantity(productId: String, newQty: Int, onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            val result = cartRepo.updateCartItemQuantity(productId, newQty)
+            result.onSuccess {
+                loadCartItems()
+                onResult(true, "Quantity updated")
+            }.onFailure {
+                onResult(false, it.message ?: "Failed to update quantity")
+            }
+        }
+    }
+
     fun removeFromCart(itemId: String) {
         viewModelScope.launch {
             cartRepo.removeFromCart(itemId).onSuccess {
@@ -81,8 +93,6 @@ class CartViewModel : ViewModel() {
             val userEmail = userDetails["email"] as? String ?: ""
             val userMobile = userDetails["mobile"] as? String ?: ""
             
-            // Note: We'll use the OrderRepository for placing order to keep logic clean
-            // Since CartViewModel shouldn't have too much logic, I'll use a new repository call
             val orderRepo = com.paliapp.ecommerce.data.repository.OrderRepository()
             val result = orderRepo.placeOrder(
                 userId = uid,

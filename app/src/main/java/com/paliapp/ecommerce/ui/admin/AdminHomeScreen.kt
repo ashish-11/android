@@ -1,21 +1,29 @@
 package com.paliapp.ecommerce.ui.admin
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import com.paliapp.ecommerce.R
 import com.paliapp.ecommerce.viewmodel.AuthViewModel
 import com.paliapp.ecommerce.viewmodel.OrderViewModel
 import com.paliapp.ecommerce.viewmodel.ProductViewModel
@@ -43,19 +51,19 @@ fun AdminHomeScreen(
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
-            title = { Text("Logout") },
-            text = { Text("Are you sure you want to logout?") },
+            title = { Text("लॉगआउट (Logout)") },
+            text = { Text("क्या आप लॉगआउट करना चाहते हैं?") },
             confirmButton = {
                 TextButton(onClick = {
                     showLogoutDialog = false
                     onLogout()
                 }) {
-                    Text("Logout", color = MaterialTheme.colorScheme.error)
+                    Text("हाँ, लॉगआउट करें", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showLogoutDialog = false }) {
-                    Text("Cancel")
+                    Text("रद्द करें")
                 }
             }
         )
@@ -80,17 +88,44 @@ fun AdminHomeScreen(
     } else {
         Scaffold(
             topBar = {
-                TopAppBar(
-                    title = { Text("WholeSale Admin") },
-                    actions = {
-                        IconButton(onClick = { showLogoutDialog = true }) {
-                            Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout")
+                Surface(shadowElevation = 4.dp) {
+                    TopAppBar(
+                        title = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                AsyncImage(
+                                    model = R.mipmap.ic_launcher,
+                                    contentDescription = "Logo",
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape),
+                                    contentScale = ContentScale.Fit
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
+                                    Text(
+                                        "पंडित मार्ट",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text(
+                                        "एडमिन पैनल",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color.Gray
+                                    )
+                                }
+                            }
+                        },
+                        actions = {
+                            IconButton(onClick = { showLogoutDialog = true }) {
+                                Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout", tint = Color.Gray)
+                            }
                         }
-                    }
-                )
+                    )
+                }
             },
             bottomBar = {
-                NavigationBar {
+                NavigationBar(containerColor = Color.White) {
                     NavigationBarItem(
                         selected = selectedTab == -1,
                         onClick = { 
@@ -98,7 +133,7 @@ fun AdminHomeScreen(
                             showDetail = false
                         },
                         icon = { Icon(Icons.Default.Dashboard, contentDescription = null) },
-                        label = { Text("Dash") }
+                        label = { Text("डैशबोर्ड", fontSize = 10.sp) }
                     )
                     NavigationBarItem(
                         selected = selectedTab == 3,
@@ -107,7 +142,7 @@ fun AdminHomeScreen(
                             showDetail = true
                         },
                         icon = { Icon(Icons.Default.GroupAdd, contentDescription = null) },
-                        label = { Text("Users") }
+                        label = { Text("ग्राहक", fontSize = 10.sp) }
                     )
                     NavigationBarItem(
                         selected = selectedTab == 0,
@@ -116,7 +151,7 @@ fun AdminHomeScreen(
                             showDetail = true
                         },
                         icon = { Icon(Icons.Default.Inventory, contentDescription = null) },
-                        label = { Text("Products") }
+                        label = { Text("सामान", fontSize = 10.sp) }
                     )
                     NavigationBarItem(
                         selected = selectedTab == 1,
@@ -126,7 +161,7 @@ fun AdminHomeScreen(
                             showDetail = true
                         },
                         icon = { Icon(Icons.Default.List, contentDescription = null) },
-                        label = { Text("Orders") }
+                        label = { Text("ऑर्डर", fontSize = 10.sp) }
                     )
                     NavigationBarItem(
                         selected = selectedTab == 4,
@@ -135,7 +170,7 @@ fun AdminHomeScreen(
                             showDetail = true
                         },
                         icon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                        label = { Text("Support") }
+                        label = { Text("सेटिंग्स", fontSize = 10.sp) }
                     )
                 }
             }
@@ -171,17 +206,17 @@ fun AdminOrdersContainer(initialPage: Int, onBack: () -> Unit, orderVm: OrderVie
             Tab(
                 selected = selectedPage == 0,
                 onClick = { selectedPage = 0 },
-                text = { Text("Pending") }
+                text = { Text("नए ऑर्डर") }
             )
             Tab(
                 selected = selectedPage == 1,
                 onClick = { selectedPage = 1 },
-                text = { Text("Delivered") }
+                text = { Text("डिलीवर हुए") }
             )
             Tab(
                 selected = selectedPage == 2,
                 onClick = { selectedPage = 2 },
-                text = { Text("Returns") }
+                text = { Text("वापसी") }
             )
         }
         
@@ -222,7 +257,7 @@ fun AdminDashboard(
             .padding(16.dp)
     ) {
         Text(
-            text = "Business Overview",
+            text = "व्यापार की जानकारी",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 24.dp)
@@ -235,7 +270,7 @@ fun AdminDashboard(
         ) {
             item {
                 StatCard(
-                    title = "Approval Requests",
+                    title = "नए ग्राहक",
                     count = pendingUsers.size.toString(),
                     icon = Icons.Default.GroupAdd,
                     color = MaterialTheme.colorScheme.tertiaryContainer,
@@ -245,7 +280,7 @@ fun AdminDashboard(
             }
             item {
                 StatCard(
-                    title = "Pending Orders",
+                    title = "बाकी ऑर्डर",
                     count = pendingCount.toString(),
                     icon = Icons.Default.PendingActions,
                     color = MaterialTheme.colorScheme.errorContainer,
@@ -255,7 +290,7 @@ fun AdminDashboard(
             }
             item {
                 StatCard(
-                    title = "Return Requests",
+                    title = "वापसी की गुज़ारिश",
                     count = returnCount.toString(),
                     icon = Icons.Default.KeyboardReturn,
                     color = Color(0xFFFFF3E0),
@@ -265,7 +300,7 @@ fun AdminDashboard(
             }
             item {
                 StatCard(
-                    title = "Total Products",
+                    title = "कुल सामान",
                     count = productCount.toString(),
                     icon = Icons.Default.Inventory,
                     color = MaterialTheme.colorScheme.primaryContainer,
@@ -278,7 +313,7 @@ fun AdminDashboard(
                 val totalRevenue = orders.filter { it.status in revenueStatuses }.sumOf { it.totalAmount }
                 
                 StatCard(
-                    title = "Total Revenue",
+                    title = "कुल कमाई",
                     count = "₹${totalRevenue.toInt()}",
                     icon = Icons.Default.Payments,
                     color = Color(0xFFE8F5E9),

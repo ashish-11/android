@@ -35,10 +35,10 @@ fun AdminSupportSettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Support Settings") },
+                title = { Text("कस्टमर सपोर्ट सेटिंग") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "पीछे")
                     }
                 }
             )
@@ -58,18 +58,18 @@ fun AdminSupportSettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel 
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    "Configure support options for your customers.",
+                    "अपने ग्राहकों के लिए सहायता विकल्प सेट करें।",
                     style = MaterialTheme.typography.bodyMedium
                 )
 
                 OutlinedTextField(
                     value = whatsappNumber,
                     onValueChange = { whatsappNumber = it },
-                    label = { Text("WhatsApp Support Number") },
-                    placeholder = { Text("e.g. 919876543210") },
+                    label = { Text("वॉट्सऐप सहायता नंबर (WhatsApp)") },
+                    placeholder = { Text("जैसे: 919876543210") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    helperText = { Text("Include country code without +") }
+                    helperText = { Text("कंट्री कोड के साथ लिखें (बिना + के)") }
                 )
 
                 Spacer(modifier = Modifier.weight(1f))
@@ -80,11 +80,11 @@ fun AdminSupportSettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel 
                         viewModel.updateSupportSettings(whatsappNumber, "")
                             .addOnSuccessListener {
                                 isSaving = false
-                                Toast.makeText(context, "Settings saved successfully", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "सेटिंग्स सुरक्षित हो गई", Toast.LENGTH_SHORT).show()
                             }
                             .addOnFailureListener { e ->
                                 isSaving = false
-                                Toast.makeText(context, "Failed to save settings: ${e.message}", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "सेटिंग्स सेव करने में विफल: ${e.message}", Toast.LENGTH_SHORT).show()
                             }
                     },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -94,7 +94,7 @@ fun AdminSupportSettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel 
                     if (isSaving) {
                         CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
                     } else {
-                        Text("Save Settings")
+                        Text("सेटिंग्स सुरक्षित करें")
                     }
                 }
             }
